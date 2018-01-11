@@ -1,0 +1,14 @@
+<?php
+// module/Album/view/album/album/add.phtml:
+
+$title = 'Create category';
+?>
+    <h1><?= $this->escapeHtml($title) ?></h1>
+<?php
+$form->setAttribute('action', '/document/category/create');//$this->url('document/category', ['action' => 'create']));
+$form->prepare();
+
+echo $this->form()->openTag($form);
+echo $this->formRow($form->get('name'));
+echo $this->formSubmit($form->get('submit'));
+echo $this->form()->closeTag();

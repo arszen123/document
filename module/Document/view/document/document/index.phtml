@@ -1,1 +1,14 @@
-<h1>Hello!!!</h1>
+<?php $this->headLink()->appendStylesheet($this->basePath('/css/main.css')) ?>
+<?php $this->headScript()->prependFile($this->basePath('/js/document/category.js')) ?>
+<?php $this->headScript()->prependFile($this->basePath('/js/jBox/jBox.Confirm.min.js')) ?>
+<?php $this->headScript()->prependFile($this->basePath('/js/jBox/jBox.Notice.min.js')) ?>
+<?php $this->headLink()->appendStylesheet($this->basePath('/css/jBox/jBox.css')) ?>
+<?php $this->headLink()->appendStylesheet($this->basePath('/css/jBox/jBox.Confirm.css')) ?>
+<?php $this->headLink()->appendStylesheet($this->basePath('/css/jBox/jBox.Notice.css')) ?>
+<div id="categories">
+</div>
+<button id="createSubCategory">Create sub category</button>
+<button id="createRootCategory">Create root category</button>
+<button class="target-click" id="deleteCategory" data-confirm style="color: red">Delete category</button>
+<div id="files">
+</div>

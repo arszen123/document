@@ -6,21 +6,43 @@
  * Time: 9:43 AM
  */
 
-use Zend\ServiceManager\Factory\InvokableFactory;
-use \Zend\Router\Http\Segment;
+namespace Document;
 
+use Zend\ServiceManager\Factory\InvokableFactory;
+use Zend\Router\Http\Segment;
+use Zend\Router\Http\Literal;
+use Doctrine\ORM\Mapping\Driver\AnnotationDriver;
+use Document\Controller\CategoryController;
+use Document\Controller\DocumentController;
+use Document\Controller\FileController;
 return [
     'controllers' => [
         'factories' => [
-            \Document\Controller\CategoryController::class => InvokableFactory::class,
-            \Document\Controller\FileController::class => InvokableFactory::class,
-            \Document\Controller\DocumentController::class => InvokableFactory::class
+            DocumentController::class => InvokableFactory::class
         ]
     ],
-
-        // The following section is new and should be added to your file:
         'router' => [
         'routes' => [
+            'home' => [
+                'type' => Literal::class,
+                'options' => [
+                    'route'    => '/',
+                    'defaults' => [
+                        'controller' => DocumentController::class,
+                        'action'     => 'index',
+                    ],
+                ],
+            ],
+            'document' => [
+                'type'    => Segment::class,
+                'options' => [
+                    'route' => '/document',
+                    'defaults' => [
+                        'controller' => DocumentController::class,
+                        'action' => 'index'
+                    ]
+                ]
+            ],
             'category' => [
                 'type'    => Segment::class,
                 'options' => [
@@ -30,7 +52,7 @@ return [
                         'id'     => '[0-9]+'
                     ],
                     'defaults' => [
-                        'controller' => \Document\Controller\CategoryController::class,
+                        'controller' => CategoryController::class,
                         'action'     => 'index'
                     ]
                 ]
@@ -43,17 +65,7 @@ return [
                         'id' => '[0-9]+'
                     ],
                     'defaults' => [
-                        'controller' => \Document\Controller\FileController::class,
-                        'action' => 'index'
-                    ]
-                ]
-            ],
-            'dovument' => [
-                'type'    => Segment::class,
-                'options' => [
-                    'route' => '/document',
-                    'defaults' => [
-                        'controller' => \Document\Controller\DocumentController::class,
+                        'controller' => FileController::class,
                         'action' => 'index'
                     ]
                 ]
@@ -62,9 +74,35 @@ return [
     ],
 
         'view_manager' => [
-        'template_path_stack' => [
-            'category' => __DIR__ . '/../view',
-            'file' => __DIR__.'/../view'
-        ],
+            'display_not_found_reason' => true,
+            'display_exceptions'       => true,
+            'doctype'                  => 'HTML5',
+            'not_found_template'       => 'error/404',
+            'exception_template'       => 'error/index',
+            'template_map' => [
+                'layout/layout'           => __DIR__ . '/../view/layout/layout.phtml',
+                'error/404'               => __DIR__ . '/../view/error/404.phtml',
+                'error/index'             => __DIR__ . '/../view/error/index.phtml',
+            ],
+            'template_path_stack' => [
+                'category' => __DIR__ . '/../view',
+                'file' => __DIR__.'/../view',
+                'document' => __DIR__.'/../view'
+            ],
+    ],
+
+    'doctrine' => [
+        'driver' => [
+            __NAMESPACE__ . '_driver' => [
+                'class' => AnnotationDriver::class,
+                'cache' => 'array',
+                'paths' => [__DIR__ . '/../src/Entity']
+            ],
+            'orm_default' => [
+                'drivers' => [
+                    __NAMESPACE__ . '\Entity' => __NAMESPACE__ . '_driver'
+                ]
+            ]
+        ]
     ]
 ];

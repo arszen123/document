@@ -17,6 +17,8 @@ use Document\Entity\Permission;
 
 class CategoryRepository extends EntityRepository
 {
+    private $user;
+    private $entityManager;
 
     public function getCategoriesAsJstreeJson(User $user){
         $categories = $this->getCategoriesAsArray($user);
@@ -78,8 +80,21 @@ class CategoryRepository extends EntityRepository
         return 0;
     }
 
-    private $user;
-    private $entityManager;
+    public function editCategory(User $user,array $data){
+        $entityManager = $this->getEntityManager();
+        $category = $entityManager->find(Category::class,(int) $data['id']);
+
+        if($user == null || $category == null)
+            return 1;
+
+        if(!$category->getUser() == $user || !$category->getPermission()->getUpload())
+            return 1;
+
+        $category->setName($data['name']);
+        $entityManager->flush();
+        return 0;
+    }
+
     public function deleteCategory(User $user, $id){
         $this->entityManager = $this->getEntityManager();
         $this->user = $user;

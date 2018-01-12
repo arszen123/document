@@ -1,6 +1,25 @@
 $(function () {
     var modal = new jBox('Modal');
-    var createCategoryUrl;
+    var categoryAjaxData;
+    var noticeData = {delayOpen: 1, delayClose: 1, attributes: {y: 'bottom'}};
+    var confirm = new jBox('Confirm', {
+        content: 'Do you really want to do this?',
+        cancelButton: 'Nope',
+        confirmButton: 'Sure do!',
+        confirm: deleteCategoryAjaxRequest
+    });
+    var deleteAjaxData = {
+        method:'GET',
+        success:function(){
+            noticeData.content = 'Category deleted!';
+            noticeData.color = 'green';
+            new jBox('Notice', noticeData).open();
+            loadCategories();
+        }
+    };
+    /**
+     * Init jsTree
+     */
     $('#categories').jstree({ 'core' : {
             "check_callback" : true,
             "themes" : { "stripes" : true },
@@ -12,92 +31,138 @@ $(function () {
 
     loadCategories();
 
-    $('#createSubCategory').on('click', function () {
-        createSubCategory();
-    });
+    $('#createSubCategory').on('click', createSubCategory);
 
-    $('#createRootCategory').on('click', function () {
-        createRootCategory();
-    });
+    $('#createRootCategory').on('click', createRootCategory);
 
-    confirm = new jBox('Confirm', {
-        content: 'Do you really want to do this?',
-        cancelButton: 'Nope',
-        confirmButton: 'Sure do!',
-        confirm: deteleCategory
-    });
-    confirm.disable();
+    $('#editCategory').on('click',editCategory);
 
-    $('#deleteCategory').on('click', function () {
+    $('#deleteCategory').on('click', deleteCategory);
+
+    /**
+     * Delete category
+     */
+    function deleteCategory() {
         category = $("#categories").jstree(true).get_selected(true);
         if(category[0]) {
             confirm.enable();
             confirm.setContent("Do you really want to delete <font color='red'>" + category[0]['text'] + "</font> category, and it's <font color='red'>sub</font> categories?")
-            categoryToDelete = category[0];
+            deleteAjaxData.url = '/document/category/delete/'+category[0]['id'];
             confirm.open();
+            category = null;
         }
         if(!category[0]){
+            confirm.close();
             confirm.disable();
-            new jBox('Notice', {content: 'Select a category first!',delayOpen: 1, delayClose: 1, color: 'red', attributes: {y: 'bottom'}}).open();
+            wrongRequest('Select a category first!')
         }
-    });
-    function deteleCategory(){
-        $.ajax({
-            method:'GET',
-            url:'/document/category/delete/'+categoryToDelete['id'],
-            success:function(){
-                new jBox('Notice', {content: 'Categories deleted!',delayOpen: 1, delayClose: 1, color: 'green', attributes: {y: 'bottom'}}).open();
-                loadCategories();
-            }
-        })
     }
+
+    function deleteCategoryAjaxRequest(){
+        $.ajax(deleteAjaxData);
+    }
+
+    /**
+     * Create category
+     */
+
     function createRootCategory(){
-        createCategoryUrl = '/document/category/create';
-        createCategory();
+        createCategoryForm('/document/category/create');
     }
 
     function createSubCategory(){
         data = $("#categories").jstree(true).get_selected(false);
         if(data) {
-            createCategoryUrl = '/document/category/create/' + data;
-            createCategory()
+            createCategoryForm('/document/category/create/' + data);
         }
     }
-    function createCategory() {
-        console.log(createCategoryUrl);
-            $.ajax({
-                method: 'GET',
-                url: createCategoryUrl,
-                success: function (data) {
-                    if (data != 'saved') {
-                        modal.setTitle('Create Category').setContent(data);
-                        modal.open();
-
-                        $('#createCategoryForm').submit(createCategoryPost);
-                    }
+    categoryAjaxData = {
+        success: function (data) {
+            if (data !== 'saved') {
+                modal.setTitle('Create Category').setContent(data);
+                if(!modal.isOpen) {
+                    modal.open();
+                    $('#createCategoryForm').submit(createCategoryPost);
                 }
-            });
+            }
+            if(data === 'saved') {
+                successAction('Categoty created');
+            }
+        }
+    };
+    function createCategoryForm(url) {
+        categoryAjaxData.url = url;
+        delete categoryAjaxData.data;
+        categoryAjaxData.method = 'GET';
+        $.ajax(categoryAjaxData);
     }
 
     function createCategoryPost(event) {
-        $.ajax({
-            method: 'POST',
-            data: 'name='+$('#name').val(),
-            url: createCategoryUrl,
-            success: function(data){
-                if(data != 'saved'){
-                    modal.setContent(data);
-                    //$('#createCategoryForm').submit(createCategoryPost);
-                }
-                if(data == 'saved') {
-                    modal.close();
-                    loadCategories();
-                }
-            }
-        });
+        categoryAjaxData.data = 'name='+$('#name').val();
+        categoryAjaxData.method = 'POST';
+        $.ajax(categoryAjaxData);
         event.preventDefault();
     }
 
+    /**
+     * Edit Category
+     */
+
+    var editCategoryAjaxData = {
+        success: function(data) {
+            if (data !== 'edited') {
+                modal.setTitle('Edit Category').setContent(data);
+                if (!modal.isOpen) {
+                    modal.open();
+                    $('#name').val(this.text);
+                    delete this.text;
+                    $('#editCategoryForm').submit(editCategoryPost);
+                }
+            }
+            if (data === 'edited') {
+                successAction('Category edited');
+            }
+        }
+    };
+
+    function editCategory(){
+        category = $("#categories").jstree(true).get_selected(true);
+        if(category[0]) {
+            editCategoryAjaxData.url = '/document/category/edit/'+category[0]['id'];
+            editCategoryAjaxData.method = 'GET';
+            editCategoryAjaxData.text = category[0]['text'];
+            $.ajax(editCategoryAjaxData);
+            category = null;
+        }
+        if(category != null && !category[0]){
+            wrongRequest('Select a category first!')
+        }
+    }
+
+    function editCategoryPost(event){
+        event.preventDefault();
+        editCategoryAjaxData.data = 'name='+$('#name').val();
+        editCategoryAjaxData.method = 'POST';
+        $.ajax(editCategoryAjaxData);
+    }
+
+    function successAction(content){
+        noticeData.content = content;
+        noticeData.color = 'green';
+        new jBox('Notice', noticeData).open();
+        modal.setContent('');
+        modal.close();
+        loadCategories();
+    }
+
+    function wrongRequest(content){
+        noticeData.content = content;
+        noticeData.color = 'red';
+        new jBox('Notice', noticeData).open();
+    }
+    /**
+     * Load categories
+     */
     function loadCategories(){
         $.ajax({
             method:'GET',

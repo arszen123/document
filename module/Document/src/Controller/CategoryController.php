@@ -56,7 +56,6 @@ class CategoryController extends AbstractActionController
         if(!$request->isPost()){
             $viewModel->setVariables(array('form' => $form));
             return $viewModel;
-            return ['form'=>$form];
         }
 
         $cc = new CreateCategory();
@@ -82,9 +81,48 @@ class CategoryController extends AbstractActionController
         return $response;
     }
 
+    public function editAction(){
+        $viewModel = new ViewModel();
+        $viewModel->setTerminal(true);
+
+
+        $request = $this->getRequest();
+
+        $form = new CreateCategoryForm();
+        $form->get('submit')->setValue('Edit Category');
+
+        if(!$request->isPost()){
+            $viewModel->setVariables(array('form' => $form));
+            return $viewModel;
+        }
+
+        $cc = new CreateCategory();
+        $form->setInputFilter($cc->getInputFilter());
+        $form->setData($request->getPost());
+
+        if(!$form->isValid()){
+            $viewModel->setVariables(array('form' => $form));
+            return $viewModel;
+        }
+
+        $id = (int) $this->params()->fromRoute('id', 0);
+        //if $id == 0 error
+        $data = $form->getData();
+
+        if($id != 0)
+            $data['id'] = $id;
+
+        $cc->exchangeArray($form->getData());
+        $this->entityManager->getRepository(Category::class)->editCategory($this->user,$data);
+
+        $response = $this->getResponse()
+            ->setContent('edited');
+        return $response;
+    }
+
     public function deleteAction(){
         $id = (int) $this->params()->fromRoute('id', 0);
-       if($id != 0)
+        if($id != 0)
             $this->entityManager->getRepository(Category::class)->deleteCategory($this->user,$id);
         $response = $this->getResponse()
             ->setContent('deleted');

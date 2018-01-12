@@ -31,6 +31,10 @@ class Version
      * @ORM\Column(type="datetime")
      */
     private $uploaded;
+    /**
+     * @ORM\ManyToOne(targetEntity="file", inversedBy="versions")
+     */
+    private $file;
 
     /**
      * @return mixed
@@ -87,4 +91,21 @@ class Version
     {
         $this->uploaded = $uploaded;
     }
+
+    /**
+     * @param File $file
+     */
+    public function setFile($file)
+    {
+        $this->file = $file;
+    }
+
+    /**
+     * @return File
+     */
+    public function getFile()
+    {
+        return $this->file;
+    }
+
 }

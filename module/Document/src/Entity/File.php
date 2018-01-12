@@ -28,14 +28,13 @@ class File
      */
     private $filename;
     /**
-     * TODO Not needed
-     * @ORM\Column(type="integer")
-     */
-    private $curentVersion;
-    /**
-     * @ORM\ManyToMany(targetEntity="Version")
+     * @ORM\OneToMany(targetEntity="Version", mappedBy="file")
      */
     private $versions;
+    /**
+     * @ORM\ManyToOne(targetEntity="Category", inversedBy="files")
+     */
+    private $category;
 
     public function __construct()
     {
@@ -85,32 +84,33 @@ class File
     /**
      * @return mixed
      */
-    public function getCurentVersion()
-    {
-        return $this->curentVersion;
-    }
-
-    /**
-     * @param mixed $curentVersion
-     */
-    public function setCurentVersion($curentVersion)
-    {
-        $this->curentVersion = $curentVersion;
-    }
-
-    /**
-     * @return mixed
-     */
     public function getVersions()
     {
         return $this->versions;
     }
 
     /**
-     * @param mixed $versions
+     * @param Version $version
      */
-    public function setVersions($versions)
+    public function setVersions(Version $version)
     {
-        $this->versions[] = $versions;
+        $version->setFile($this);
+        $this->versions[] = $version;
     }
+
+    /**
+     * @param Category $category
+     */
+    public function setCategory(Category $category){
+        $this->category = $category;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getCategory()
+    {
+        return $this->category;
+    }
+
 }

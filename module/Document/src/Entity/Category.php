@@ -43,11 +43,7 @@ class Category
     private $permission;
 
     /**
-     * @ORM\ManyToMany(targetEntity="File")
-     * @ORM\JoinTable(name="category_files",
-     *     joinColumns={@ORM\JoinColumn(name="category_id", referencedColumnName="id")},
-     *     inverseJoinColumns={@ORM\JoinColumn(name="file_id", referencedColumnName="id")}
-     *     )
+     * @ORM\OneToMany(targetEntity="File", mappedBy="category")
      */
     private $files;
 
@@ -148,6 +144,7 @@ class Category
      */
     public function setFiles(File $files)
     {
+        $files->setCategory($this);
         $this->files[] = $files;
     }
 

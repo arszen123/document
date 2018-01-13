@@ -18,6 +18,7 @@ use Zend\ServiceManager\Factory\AbstractFactoryInterface;
 use Zend\Stdlib\RequestInterface as Request;
 use Zend\View\Model\JsonModel;
 
+//TODO Do this, before start Category category error retrieving
 class FileController extends AbstractRestfulController
 {
 

@@ -1,4 +1,5 @@
 $(function () {
+    //TODO clean the mess!!! LAST
     var modal = new jBox('Modal');
     var categoryAjaxData;
     var noticeData = {delayOpen: 1, delayClose: 1, attributes: {y: 'bottom'}};
@@ -36,6 +37,8 @@ $(function () {
     $('#createRootCategory').on('click', createRootCategory);
 
     $('#editCategory').on('click',editCategory);
+
+    $('#changePermission').on('click',changePermission);
 
     $('#deleteCategory').on('click', deleteCategory);
 
@@ -146,6 +149,48 @@ $(function () {
         $.ajax(editCategoryAjaxData);
     }
 
+    /**
+     * Change permission
+     */
+
+    var changePermissionAjaxData = {
+        success: function(data) {
+            if (data !== 'edited') {
+                modal.setTitle('Edit Category').setContent(data);
+                if (!modal.isOpen) {
+                    modal.open();
+                    $('#editPermissionForm').submit(changePermissionPost);
+                }
+            }
+            if (data === 'changed') {
+                successAction('Category edited!');
+            }
+        }
+    };
+
+    function changePermission(){
+        category = $("#categories").jstree(true).get_selected(true);
+        if(category[0]) {
+            changePermissionAjaxData.url = '/document/category/permission/'+category[0]['id'];
+            changePermissionAjaxData.method = 'GET';
+            $.ajax(changePermissionAjaxData);
+            category = null;
+        }
+        if(category != null && !category[0]){
+            wrongRequest('Select a category first!')
+        }
+    }
+
+    function changePermissionPost(event){
+        event.preventDefault();
+        changePermissionAjaxData.data = $( this ).serialize();
+        changePermissionAjaxData.method = 'POST';
+        $.ajax(changePermissionAjaxData);
+    }
+
+    /**
+     * Helpers
+     */
     function successAction(content){
         noticeData.content = content;
         noticeData.color = 'green';

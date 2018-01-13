@@ -14,7 +14,9 @@ use Document\Entity\Category;
 use Document\Entity\Permission;
 use Document\Entity\User;
 use Document\Form\CreateCategoryForm;
+use Document\Form\EditPermissionForm;
 use Document\Model\CreateCategory;
+use Document\Model\EditPermission;
 use Zend\Mvc\Controller\AbstractActionController;
 use Zend\Mvc\Controller\AbstractRestfulController;
 use Zend\View\Model\ViewModel;
@@ -127,7 +129,38 @@ class CategoryController extends AbstractActionController
         $response = $this->getResponse()
             ->setContent('deleted');
         return $response;
-
     }
 
+    public function permissionAction(){
+
+        $viewModel = new ViewModel();
+        $viewModel->setTerminal(true);
+        $form = new EditPermissionForm();
+        $id = (int) $this->params()->fromRoute('id', 0);
+        $request = $this->getRequest();
+        $permission = $this->entityManager->getRepository(Category::class)->findOneBy(array('user'=>$this->user,'id'=>$id))->getPermission();
+
+        $form->get('upload')->setValue($permission->getUpload());
+        $form->get('download')->setValue($permission->getDownload());
+
+        if(!$request->isPost()){
+            return $viewModel->setVariables(['form'=>$form]);
+        }
+
+        $ep = new EditPermission();
+        $form->setData($request->getPost());
+        $form->setInputFilter($ep->getInputFilter());
+
+        if(!$form->isValid()) {
+            return $viewModel->setVariables(['form'=>$form]);
+        }
+
+        //if $id == 0 error
+        $data = $form->getData();
+        $data['id'] = $id;
+
+        $this->entityManager->getRepository(Category::class)->changePermissionForCategory($this->user,$data);
+
+        return $this->getResponse()->setContent('changed');
+    }
 }

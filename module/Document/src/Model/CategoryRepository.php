@@ -14,7 +14,11 @@ use Document\Entity\Category;
 use Document\Entity\User;
 use Document\Entity\Permission;
 
-
+/**
+ * TODO MANY :D
+ * TODO send back error as json
+ * TODO delete categories if the user has upload permission only else then stop delete current tree
+ */
 class CategoryRepository extends EntityRepository
 {
     private $user;
@@ -58,6 +62,9 @@ class CategoryRepository extends EntityRepository
             return 1;
         }
 
+        if(!$parentCategory->getPermission()->getUpload()){
+            return 1;
+        }
         $permission = new Permission();
         $permission->setDownload(true);
         $permission->setUpload(true);
@@ -117,7 +124,7 @@ class CategoryRepository extends EntityRepository
     }
 
     private function removeCategory($category){
-        if($this->user == $category->getUser() && $category->getPermission()->getUpload()) {
+        if($this->user == $category->getUser()/* && $category->getPermission()->getUpload()*/) {
             $this->entityManager->remove($category->getPermission());
             foreach ($category->getFiles() as $file) {
                 foreach ($file->getVersions() as $version) {
@@ -128,5 +135,20 @@ class CategoryRepository extends EntityRepository
             $this->entityManager->remove($category);
 
         }
+    }
+
+    public function changePermissionForCategory(User $user,$data){
+        $entityManager = $this->getEntityManager();
+        $category = $entityManager->find(Category::class,$data['id']);
+
+        if(! $category->getUser() == $user){
+            return 1;
+        }
+
+        $category->getPermission()->setUpload($data['upload']);
+        $category->getPermission()->setDownload($data['download']);
+        $entityManager->flush();
+
+
     }
 }

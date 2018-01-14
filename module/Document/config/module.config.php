@@ -60,9 +60,11 @@ return [
             'file' => [
                 'type'    => Segment::class,
                 'options' => [
-                    'route' => '/document/file[/:id]',
+                    'route' => '/document/file[/:action[/:id[/version/:versionId]]]',
                     'constraints'=>[
-                        'id' => '[0-9]+'
+                        'action' => '[a-zA-Z][a-zA-Z0-9_-]*',
+                        'id' => '[0-9]+',
+                        'versionId' => '[0-9]+'
                     ],
                     'defaults' => [
                         'controller' => FileController::class,

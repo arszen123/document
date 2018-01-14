@@ -11,7 +11,7 @@ namespace Document\Entity;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * @ORM\Entity
+ * @ORM\Entity(repositoryClass="\Document\Model\FileRepository")
  */
 class File
 {
@@ -19,10 +19,6 @@ class File
      * @ORM\Id @ORM\Column(type="integer") @ORM\GeneratedValue
      */
     private $id;
-    /**
-     * @ORM\Column(type="string")
-     */
-    private $visibleName;
     /**
      * @ORM\Column(type="string")
      */
@@ -47,22 +43,6 @@ class File
     public function getId()
     {
         return $this->id;
-    }
-
-    /**
-     * @return mixed
-     */
-    public function getVisibleName()
-    {
-        return $this->visibleName;
-    }
-
-    /**
-     * @param mixed $visibleName
-     */
-    public function setVisibleName($visibleName)
-    {
-        $this->visibleName = $visibleName;
     }
 
     /**

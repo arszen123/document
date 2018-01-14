@@ -24,6 +24,10 @@ class Version
      */
     private $version;
     /**
+     * @ORM\Column(type="string")
+     */
+    private $name;
+    /**
      * @ORM\ManyToOne(targetEntity="User")
      */
     private $user;
@@ -106,6 +110,22 @@ class Version
     public function getFile()
     {
         return $this->file;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getName()
+    {
+        return $this->name;
+    }
+
+    /**
+     * @param mixed $name
+     */
+    public function setName($name)
+    {
+        $this->name = $name;
     }
 
 }

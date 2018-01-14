@@ -1,0 +1,16 @@
+<?php
+// module/Album/view/album/album/add.phtml:
+
+$title = 'Upload file';
+?>
+    <h1><?= $this->escapeHtml($title) ?></h1>
+<?php
+
+$form->setAttribute('action', $this->url('file', ['action' => 'upload','id'=>$cid]));
+$form->prepare();
+
+echo $this->form()->openTag($form);
+echo $this->formRow($form->get('fileName'));
+echo $this->formRow($form->get('file'));
+echo $this->formSubmit($form->get('submit'));
+echo $this->form()->closeTag();

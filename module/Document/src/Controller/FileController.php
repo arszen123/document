@@ -10,124 +10,124 @@ namespace Document\Controller;
 
 
 
-
-//use \Entity\User;
+use Doctrine\ORM\EntityManager;
+use Document\Entity\Category;
+use Document\Entity\User;
+use Document\Entity\File;
+use Document\Form\UploadFileForm;
+use Document\Model\ResponseData;
+use Document\Model\UploadFile;
+use Zend\Filter\File\RenameUpload;
+use Zend\Http\Response\Stream;
 use Zend\Mvc\Controller\AbstractActionController;
-use Zend\Mvc\Controller\AbstractRestfulController;
-use Zend\ServiceManager\Factory\AbstractFactoryInterface;
-use Zend\Stdlib\RequestInterface as Request;
-use Zend\View\Model\JsonModel;
+use Zend\View\Model\ViewModel;
 
-//TODO Do this, before start Category category error retrieving
-class FileController extends AbstractRestfulController
+class FileController extends AbstractActionController
 {
 
     private $entityManager;
+    private $user;
 
-    public function __construct($entityManager)
+    public function __construct(EntityManager $entityManager)
     {
         $this->entityManager = $entityManager;
+        $this->user = $this->entityManager->find(User::class,1);
     }
 
-    public function indexAction(){
-        return $this->getList();
-    }
-
-    public function getList()
+    public function indexAction()
     {
+        return $this->listAction();
+    }
 
-        $userId = 1;
+    public function listAction(){
+        $data['user'] = $this->user;
+        $data['categoryId'] = $this->params()->fromRoute('id',0);
+        $responseData = $this->entityManager->getRepository(File::class)->getFilesAsJson($data);
+        $responseData->setResponse($this->getResponse());
+        return $responseData->getResponseAsJsonContentType();
+    }
 
-        $user = $this->entityManager->find(\Document\Entity\User::class,$userId);
-        if($user == null){
-            $response = $this->getResponseWithHeader()
-                ->setContent('User not found');
-            return $response;
-        }
-        /*$categoriesRepository = $this->entityManager->getRepository('Category');
-        $categories = $categoriesRepository->findBy(array('user'=>$user,'parent'=>null));//findAll();
+    public function uploadAction(){
+        $viewModel = new ViewModel();
+        $responseData = new ResponseData($this->getResponse());
+        $request = $this->getRequest();
+        $categoryId = (int) $this->params()->fromRoute('id',0);
 
-        $time = new DateTime();
-        echo $time->format("Y-m-d H:i:s\n");
+        $data['user'] = $this->user;
+        $data['categoryId'] = $categoryId;
 
+        $viewModel->setTerminal(true);
 
-       $res = listCategories($categories);
-
-        function listCategories($categories, $format=""){
-            $res = '';
-            foreach($categories as $category){
-                $res .=  sprintf($format."%d - %s - %s - %d,%d\n",$category->getId(), $category->getUser()->getName(), $category->getName(),
-                    $category->getPermission()->getUpload(), $category->getPermission()->getDownload());
-                $res .= listFiles($category->getFiles(),$format);
-                if(!$category->getChildren()->isEmpty()){
-                    $res .= listCategories($category->getChildren(),$format."\t");
-                }
-            }
-            return $res;
+        $category = $this->entityManager->getRepository(Category::class)->findOneBy(array('user'=>$this->user,'id'=>$data['categoryId']));
+        if($category == null){
+            $responseData->setFailMessage('Category not found!');
+            return $responseData->getResponseAsJsonContentType();
         }
 
-        function listFiles($files,$format=""){
-            $res = '';
-            foreach($files as $file){
-                $res .= sprintf($format."%d - %s - v%s.0 - %s\n",$file->getId(),$file->getVisibleName(),$file->getVersions()->last()->getVersion(),$file->getVersions()->last()->getUploaded()->format("Y-m-d H:i:s"));
-            }
-            return $res;
-        }*/
-        $response = $this->getResponseWithHeader()
-            ->setContent($user->getName());
-        return $response;
+        if(!$category->getPermission()->getUpload()){
+            $responseData->setFailMessage('No upload permission to current category!');
+            return $responseData->getResponseAsJsonContentType();
+        }
+
+        $form = new UploadFileForm();
+
+        if(!$request->isPost()){
+            $viewModel->setVariables(['form'=>$form,'cid'=>$data['categoryId']]);
+            return $viewModel;
+        }
+
+        $post = array_merge_recursive(
+            $request->getPost()->toArray(),
+            $request->getFiles()->toArray()
+        );
+
+        $uf = new UploadFile();
+        $form->setData($post);
+        $form->setInputFilter($uf->getInputFilter());
+
+        if(!$form->isValid()) {
+            $viewModel->setVariables(['form'=>$form,'cid'=>$data['categoryId']]);
+            return $viewModel;
+        }
+
+        $data = $form->getData();
+        $data['categoryId'] = $categoryId;
+        $data['user'] = $this->user;
+        $newFileName = $this->entityManager->getRepository(File::class)->saveFileInDatabase($data);
+
+        //Upload
+        $uf->saveFile($data['file'],$newFileName);
+        $responseData->setSuccessMessage('File uploaded!');
+        return $responseData->getResponseAsJsonContentType();
+
+
     }
 
-    public function get($id)
-    {
-        $response = $this->getResponseWithHeader()
-            ->setContent("{\"value\":\"".$id."\"}");
-        return $response;
-    }
-
-    public function create($data)
-    {
-        $response = $this->getResponseWithHeader()
-            ->setContent( __METHOD__.'create new item of data :</br>'.$data['id'].'</b>');
-        return $response;
-    }
-
-    public function update($id, $data)
-    {
-        $response = $this->getResponseWithHeader()
-            ->setContent(__METHOD__.' update current data with id =  '.$id.
-                ' with data of name is '.$data['name']) ;
-        return $response;
-    }
-
-    public function delete($id)
-    {
-        $response = $this->getResponseWithHeader()
-            ->setContent(__METHOD__.' delete current data with id =  '.$id) ;
-        return $response;
-    }
-
-    public function options()
-    {
-        $t = $this->getRequest();
-        $response = $this->getResponseWithHeader()
-            ->setContent(__METHOD__.' delete current data with id =  1'.explode('=',$t->getContent())[1]);
-
-
-        return $response;
-    }
-
-    // configure response
-    public function getResponseWithHeader()
-    {
+    public function downloadAction(){
+        $fileId = $this->params()->fromRoute('id',0);
+        $versionId = $this->params()->fromRoute('versionId',0);
         $response = $this->getResponse();
-        $response->getHeaders()
-            //make can accessed by *
-            ->addHeaderLine('Access-Control-Allow-Origin','*')
-            //set allow methods
-            ->addHeaderLine('Access-Control-Allow-Methods','POST PUT DELETE GET OPTIONS');
 
-        return $response;
+        $fileData = $this->entityManager->getRepository(File::class)->getFile($fileId,$versionId);
+        if($fileData instanceof ResponseData) {
+            $fileData->setResponse($response);
+            return $fileData->getResponseAsJsonContentType();
+        }
+        $fileName = __DIR__.'/../assets/files/'.$fileData['versionName'];
+        $stream = new Stream();
+        $stream->setStream(fopen($fileName, 'r'));
+        $stream->setStatusCode(200);
+        $stream->setStreamName(basename($fileData['fileName']));
+        $headers = new \Zend\Http\Headers();
+        $headers->addHeaders(array(
+            'Content-Disposition' => 'attachment; filename="' . basename($fileData['fileName']) .'"',
+            'Content-Type' => 'application/octet-stream',
+            'Content-Length' => filesize($fileName),
+            'Expires' => '@0', // @0, because zf2 parses date as string to \DateTime() object
+            'Cache-Control' => 'must-revalidate',
+            'Pragma' => 'public'
+        ));
+        $stream->setHeaders($headers);
+        return $stream;
     }
-
 }

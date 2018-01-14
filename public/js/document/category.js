@@ -30,6 +30,15 @@ $(function () {
             ]
         } });
 
+    $('#files').jstree({ 'core' : {
+            "check_callback" : true,
+            "themes" : { "stripes" : true },
+            "plugins" : [
+                "contextmenu", "dnd", "search",
+                "state", "types", "wholerow"
+            ]
+        } });
+
     loadCategories();
 
     $('#createSubCategory').on('click', createSubCategory);
@@ -41,6 +50,11 @@ $(function () {
     $('#changePermission').on('click',changePermission);
 
     $('#deleteCategory').on('click', deleteCategory);
+
+    $('#categories').on('select_node.jstree',loadFiles);
+
+    $('#uploadFile').on('click',uploadFileAjaxRequest);
+
 
     /**
      * Delete category
@@ -218,5 +232,108 @@ $(function () {
                 $("#categories").jstree(true).refresh();
             }
         });
+    }
+
+    /**
+     * Files
+     */
+
+    function loadFiles(){
+        id = $("#categories").jstree(true).get_selected(true)[0]['id'];
+        $.ajax({
+            method:'GET',
+            url:'/document/file/list/'+id,
+            success: function(data,status,xhr) {
+                var ct = xhr.getResponseHeader("content-type") || "";
+                if (ct.indexOf('json') > -1) {
+                    if(data.status == 'success') {
+                        $("#files").jstree(true).settings.core.data = data.data;
+                        $("#files").jstree(true).refresh();
+                    }
+                    if(data.status == 'failed'){
+                        wrongRequest(data.message);
+                        $("#files").jstree(true).settings.core.data = [];
+                        $("#files").jstree(true).refresh();
+                    }
+                }
+
+            }
+        });
+    }
+
+    /**
+     * Download file
+     */
+    $('#files').on('select_node.jstree',function(event,node){
+        url = node.node.a_attr.href;
+        $.ajax({
+            url:url,
+            type: 'POST',
+            success: function(data,status,xhr) {
+                var ct = xhr.getResponseHeader("content-type") || "";
+                if (ct.indexOf('json') > -1) {
+                    wrongRequest(data.message)
+                }else {
+                    window.location = url;
+                }
+                $('#files').jstree(true).deselect_all(true);
+            }
+        });
+    });
+
+    /**
+     * Upload file
+     */
+    var uploadFileAjaxData = {
+        success: function(data,status,xhr) {
+            var ct = xhr.getResponseHeader("content-type") || "";
+            if (ct.indexOf('html') > -1) {
+                modal.setTitle('Upload File').setContent(data);
+                if (!modal.isOpen) {
+                    modal.open();
+                    $('#uploadFileForm').submit(uploadFileAjaxPost);
+                }
+            }
+            console.log(ct);
+            if (ct.indexOf('json') > -1) {
+                console.log(data);
+                noticeData.content = data.message;
+                noticeData.color = 'green';
+                new jBox('Notice', noticeData).open();
+                loadFiles();
+            }
+        }
+    };
+
+    function uploadFileAjaxRequest(){
+        category = $("#categories").jstree(true).get_selected(true);
+        if(category[0]) {
+            uploadFileAjaxData.url = '/document/file/upload/'+category[0]['id'];
+            uploadFileAjaxData.method = 'GET';
+            delete uploadFileAjaxData.data;
+            delete uploadFileAjaxData.enctype;
+            delete uploadFileAjaxData.cache;
+            delete uploadFileAjaxData.contentType;
+            delete uploadFileAjaxData.processData;
+            $.ajax(uploadFileAjaxData);
+            category = null;
+        }
+        if(category != null && !category[0]){
+            wrongRequest('Select a category first!')
+        }
+    }
+
+    function uploadFileAjaxPost(event){
+        event.preventDefault();
+        form_data = new FormData();
+        form_data.append('fileToUpload',$('#fileToUpload').prop('files')[0]);
+        form_data.append('fileName',$('#fileName').val());
+        uploadFileAjaxData.data = new FormData(this);
+        uploadFileAjaxData.method = 'POST';
+        uploadFileAjaxData.enctype = 'multipart/form-data';
+        uploadFileAjaxData.cache = false;
+        uploadFileAjaxData.contentType = false;
+        uploadFileAjaxData.processData = false;
+        $.ajax(uploadFileAjaxData);
     }
 });

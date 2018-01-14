@@ -24,10 +24,17 @@ class CategoryRepository extends EntityRepository
     private $user;
     private $entityManager;
 
-    public function getCategoriesAsJstreeJson(User $user){
+    public function getCategoriesAsResponseData(User $user){
         $categories = $this->getCategoriesAsArray($user);
+        $response = new ResponseData();
+        if($categories == null){
+            $response->setFailMessage('No categories available!');
+            return $response;
+        }
 
-        return $this->buildJstree($categories);
+        $response->setSuccessMessage('Categories loaded!');
+        $response->setData($this->buildJstree($categories));
+        return $response;
     }
 
     public function getCategoriesAsArray(User $user){
@@ -57,13 +64,15 @@ class CategoryRepository extends EntityRepository
     public function createCategory(User $user,array $data){
         $entityManager = $this->getEntityManager();
         $parentCategory = $entityManager->find(Category::class,(int) $data['id']);
-
+        $response = new ResponseData();
         if($user == null){
-            return 1;
+            $response->setFailMessage('You must log in!');
+            return $response;
         }
 
-        if(!$parentCategory->getPermission()->getUpload()){
-            return 1;
+        if($parentCategory != null && !$parentCategory->getPermission()->getUpload()){
+            $response->setFailMessage('No upload permission!');
+            return $response;
         }
         $permission = new Permission();
         $permission->setDownload(true);
@@ -76,7 +85,8 @@ class CategoryRepository extends EntityRepository
 
         if($parentCategory != null){
             if($user != $parentCategory->getUser()){
-                return 1;
+                $response->setFailMessage('Wow! You are a wrong way!');
+                return $response;
             }
             $category->setParent($parentCategory);
         }
@@ -84,22 +94,29 @@ class CategoryRepository extends EntityRepository
         $entityManager->persist($permission);
         $entityManager->persist($category);
         $entityManager->flush();
-        return 0;
+        $response->setSuccessMessage('Category created successfully!');
+        return $response;
     }
 
     public function editCategory(User $user,array $data){
         $entityManager = $this->getEntityManager();
         $category = $entityManager->find(Category::class,(int) $data['id']);
+        $responseData = new ResponseData();
+        if($user == null || $category == null || !$category->getUser() == $user ) {
+            $responseData->setFailMessage('Something went wrong!');
+            return $responseData;
+        }
 
-        if($user == null || $category == null)
-            return 1;
-
-        if(!$category->getUser() == $user || !$category->getPermission()->getUpload())
-            return 1;
+        if(!$category->getPermission()->getUpload()) {
+            $responseData->setFailMessage('No upload permission!');
+            return $responseData;
+        }
 
         $category->setName($data['name']);
         $entityManager->flush();
-        return 0;
+
+        $responseData->setFailMessage('Successfully edited!');
+        return $responseData;
     }
 
     public function deleteCategory(User $user, $id){
@@ -141,14 +158,17 @@ class CategoryRepository extends EntityRepository
         $entityManager = $this->getEntityManager();
         $category = $entityManager->find(Category::class,$data['id']);
 
+        $responseData = new ResponseData();
         if(! $category->getUser() == $user){
-            return 1;
+            $responseData->setFailMessage('Something went wrong!');
+            return $responseData;
         }
 
         $category->getPermission()->setUpload($data['upload']);
         $category->getPermission()->setDownload($data['download']);
         $entityManager->flush();
 
-
+        $responseData->setSuccessMessage('Successfully edited!');
+        return $responseData;
     }
 }

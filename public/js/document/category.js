@@ -94,16 +94,18 @@ $(function () {
         }
     }
     categoryAjaxData = {
-        success: function (data) {
-            if (data !== 'saved') {
+        success: function(data,status,xhr) {
+            var ct = xhr.getResponseHeader("content-type") || "";
+            if (ct.indexOf('json') > -1) {
+                if (data.status === 'success') {
+                    successAction(data.message);
+                }
+            }else{
                 modal.setTitle('Create Category').setContent(data);
-                if(!modal.isOpen) {
+                if (!modal.isOpen) {
                     modal.open();
                     $('#createCategoryForm').submit(createCategoryPost);
                 }
-            }
-            if(data === 'saved') {
-                successAction('Categoty created');
             }
         }
     };
@@ -126,8 +128,13 @@ $(function () {
      */
 
     var editCategoryAjaxData = {
-        success: function(data) {
-            if (data !== 'edited') {
+        success: function(data,status,xhr) {
+            var ct = xhr.getResponseHeader("content-type") || "";
+            if (ct.indexOf('json') > -1) {
+                if (data.status === 'success') {
+                    successAction(data.message);
+                }
+            }else{
                 modal.setTitle('Edit Category').setContent(data);
                 if (!modal.isOpen) {
                     modal.open();
@@ -135,9 +142,6 @@ $(function () {
                     delete this.text;
                     $('#editCategoryForm').submit(editCategoryPost);
                 }
-            }
-            if (data === 'edited') {
-                successAction('Category edited');
             }
         }
     };
@@ -168,16 +172,18 @@ $(function () {
      */
 
     var changePermissionAjaxData = {
-        success: function(data) {
-            if (data !== 'edited') {
+        success: function(data,status,xhr) {
+            var ct = xhr.getResponseHeader("content-type") || "";
+            if (ct.indexOf('json') > -1) {
+                if (data.status === 'success') {
+                    successAction(data.message);
+                }
+            }else{
                 modal.setTitle('Edit Category').setContent(data);
                 if (!modal.isOpen) {
                     modal.open();
                     $('#editPermissionForm').submit(changePermissionPost);
                 }
-            }
-            if (data === 'changed') {
-                successAction('Category edited!');
             }
         }
     };
@@ -227,9 +233,11 @@ $(function () {
             method:'GET',
             url:'/document/category/list',
             success: function(data){
-                dataJson = JSON.parse(data);
-                $("#categories").jstree(true).settings.core.data = dataJson;
+                $("#categories").jstree(true).settings.core.data = data.data;
                 $("#categories").jstree(true).refresh();
+                noticeData.content = data.message;
+                noticeData.color = 'green';
+                new jBox('Notice', noticeData).open();
             }
         });
     }
@@ -249,6 +257,9 @@ $(function () {
                     if(data.status == 'success') {
                         $("#files").jstree(true).settings.core.data = data.data;
                         $("#files").jstree(true).refresh();
+                        noticeData.content = data.message;
+                        noticeData.color = 'green';
+                        new jBox('Notice', noticeData).open();
                     }
                     if(data.status == 'failed'){
                         wrongRequest(data.message);

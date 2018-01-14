@@ -17,6 +17,7 @@ use Document\Form\CreateCategoryForm;
 use Document\Form\EditPermissionForm;
 use Document\Model\CreateCategory;
 use Document\Model\EditPermission;
+use Document\Model\ResponseData;
 use Zend\Mvc\Controller\AbstractActionController;
 use Zend\Mvc\Controller\AbstractRestfulController;
 use Zend\View\Model\ViewModel;
@@ -39,10 +40,9 @@ class CategoryController extends AbstractActionController
 
     public function listAction(){
 
-        $json = $this->entityManager->getRepository(Category::class)->getCategoriesAsJstreeJson($this->user);
-        $response = $this->getResponse()
-            ->setContent($json);
-        return $response;
+        $response = $this->entityManager->getRepository(Category::class)->getCategoriesAsResponseData($this->user);
+        $response->setResponse($this->getResponse());
+        return $response->getResponseAsJsonContentType();
     }
 
     public function createAction(){
@@ -72,15 +72,13 @@ class CategoryController extends AbstractActionController
         $id = (int) $this->params()->fromRoute('id', 0);
         $data = $form->getData();
 
-        if($id != 0)
-            $data['id'] = $id;
+        $data['id'] = $id;
 
         $cc->exchangeArray($form->getData());
-        $this->entityManager->getRepository(Category::class)->createCategory($this->user,$data);
+        $responseData = $this->entityManager->getRepository(Category::class)->createCategory($this->user,$data);
 
-        $response = $this->getResponse()
-            ->setContent('saved');
-        return $response;
+        $responseData->setResponse($this->getResponse());
+        return $responseData->getResponseAsJsonContentType();
     }
 
     public function editAction(){
@@ -108,20 +106,23 @@ class CategoryController extends AbstractActionController
         }
 
         $id = (int) $this->params()->fromRoute('id', 0);
-        //if $id == 0 error
-        $data = $form->getData();
+        $responseData = new ResponseData($this->getResponse());
+        if($id == 0){
+            $responseData->setFailMessage('Category not found!');
+            return $responseData->getResponseAsJsonContentType();
+        }
 
-        if($id != 0)
-            $data['id'] = $id;
+        $data = $form->getData();
+        $data['id'] = $id;
 
         $cc->exchangeArray($form->getData());
-        $this->entityManager->getRepository(Category::class)->editCategory($this->user,$data);
+        $responseData = $this->entityManager->getRepository(Category::class)->editCategory($this->user,$data);
 
-        $response = $this->getResponse()
-            ->setContent('edited');
-        return $response;
+        $responseData->setResponse($this->getResponse());
+        return $responseData->getResponseAsJsonContentType();
     }
 
+    //TODO its complex
     public function deleteAction(){
         $id = (int) $this->params()->fromRoute('id', 0);
         if($id != 0)
@@ -155,12 +156,18 @@ class CategoryController extends AbstractActionController
             return $viewModel->setVariables(['form'=>$form]);
         }
 
-        //if $id == 0 error
+        $responseData = new ResponseData($this->getResponse());
+        if($id == 0){
+            $responseData->setFailMessage('Category not found!');
+            return $responseData->getResponseAsJsonContentType();
+        }
+
         $data = $form->getData();
         $data['id'] = $id;
 
-        $this->entityManager->getRepository(Category::class)->changePermissionForCategory($this->user,$data);
+        $responseData = $this->entityManager->getRepository(Category::class)->changePermissionForCategory($this->user,$data);
 
-        return $this->getResponse()->setContent('changed');
+        $responseData->setResponse($this->getResponse());
+        return $responseData->getResponseAsJsonContentType();
     }
 }

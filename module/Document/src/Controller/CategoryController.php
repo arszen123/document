@@ -55,13 +55,12 @@ class CategoryController extends AbstractActionController
         $responseData = new ResponseData($this->getResponse());
 
         $category = $this->entityManager->find(Category::class,$id);
-        if($category != null && !$category->getPermission()->getUpload()){
+        if($this->entityManager->getRepository(Permission::class)->canNotCreateCategory($category,$this->user)){
             $responseData->setFailMessage('No upload permission!');
             return $responseData->getResponseAsJsonContentType();
         }
 
         $request = $this->getRequest();
-
         $form = new CreateCategoryForm();
         $form->get('submit')->setValue('Create Category');
 
@@ -80,10 +79,8 @@ class CategoryController extends AbstractActionController
         }
 
         $data = $form->getData();
-
         $data['id'] = $id;
 
-        $cc->exchangeArray($form->getData());
         $responseData = $this->entityManager->getRepository(Category::class)->createCategory($this->user,$data);
 
         $responseData->setResponse($this->getResponse());
@@ -93,26 +90,22 @@ class CategoryController extends AbstractActionController
     public function editAction(){
         $viewModel = new ViewModel();
         $viewModel->setTerminal(true);
-        $request = $this->getRequest();
         $id = (int) $this->params()->fromRoute('id', 0);
         $responseData = new ResponseData($this->getResponse());
 
         $category = $this->entityManager->find(Category::class,$id);
-        if($category == null ){
-            $responseData->setFailMessage('Category not found!');
-            return $responseData->getResponseAsJsonContentType();
-        }
-
-        if(!$category->getPermission()->getUpload()){
+        if(!$this->entityManager->getRepository(Permission::class)->hasEditPermission($category,$this->user)){
             $responseData->setFailMessage('No upload permission!');
             return $responseData->getResponseAsJsonContentType();
         }
 
+        $request = $this->getRequest();
         $form = new CreateCategoryForm();
         $form->get('submit')->setValue('Edit Category');
         $form->get('name')->setValue($category->getName());
+
         if(!$request->isPost()){
-            $viewModel->setVariables(array('form' => $form));
+            $viewModel->setVariables(array('form' => $form,'cid'=>$id));
             return $viewModel;
         }
 
@@ -121,21 +114,19 @@ class CategoryController extends AbstractActionController
         $form->setData($request->getPost());
 
         if(!$form->isValid()){
-            $viewModel->setVariables(array('form' => $form));
+            $viewModel->setVariables(array('form' => $form,'cid'=>$id));
             return $viewModel;
         }
 
         $data = $form->getData();
         $data['id'] = $id;
 
-        $cc->exchangeArray($form->getData());
         $responseData = $this->entityManager->getRepository(Category::class)->editCategory($this->user,$data);
 
         $responseData->setResponse($this->getResponse());
         return $responseData->getResponseAsJsonContentType();
     }
-
-    //TODO its complex
+    
     public function deleteAction(){
         $id = (int) $this->params()->fromRoute('id', 0);
 
@@ -149,15 +140,21 @@ class CategoryController extends AbstractActionController
         $viewModel = new ViewModel();
         $viewModel->setTerminal(true);
         $form = new EditPermissionForm();
+        $responseData = new ResponseData($this->getResponse());
         $id = (int) $this->params()->fromRoute('id', 0);
         $request = $this->getRequest();
-        $permission = $this->entityManager->getRepository(Category::class)->findOneBy(array('user'=>$this->user,'id'=>$id))->getPermission();
+        $category = $this->entityManager->getRepository(Category::class)->findOneBy(array('user'=>$this->user,'id'=>$id));
 
+        if($category == null){
+            $responseData->setFailMessage('Category not found!');
+            return $responseData->getResponseAsJsonContentType();
+        }
+        $permission = $category->getPermission();
         $form->get('upload')->setValue($permission->getUpload());
         $form->get('download')->setValue($permission->getDownload());
 
         if(!$request->isPost()){
-            return $viewModel->setVariables(['form'=>$form]);
+            return $viewModel->setVariables(['form'=>$form,'cid'=>$id]);
         }
 
         $ep = new EditPermission();
@@ -165,13 +162,7 @@ class CategoryController extends AbstractActionController
         $form->setInputFilter($ep->getInputFilter());
 
         if(!$form->isValid()) {
-            return $viewModel->setVariables(['form'=>$form]);
-        }
-
-        $responseData = new ResponseData($this->getResponse());
-        if($id == 0){
-            $responseData->setFailMessage('Category not found!');
-            return $responseData->getResponseAsJsonContentType();
+            return $viewModel->setVariables(['form'=>$form,'cid'=>$id]);
         }
 
         $data = $form->getData();

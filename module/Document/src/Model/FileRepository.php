@@ -13,6 +13,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\ORM\EntityRepository;
 use Document\Entity\Category;
 use Document\Entity\File;
+use Document\Entity\Permission;
 use Document\Entity\User;
 use Document\Entity\Version;
 
@@ -22,6 +23,7 @@ class FileRepository extends EntityRepository
     /**
      * No external usage, but keep it public
      */
+    private $entityManager;
     public function getFilesAsArray(array $data){
         $entityManager = $this->getEntityManager();
         $category = $entityManager->find(Category::class,$data['categoryId']);
@@ -38,8 +40,7 @@ class FileRepository extends EntityRepository
         $files = $this->getFilesAsArray($data);
         $result = new ResponseData();
         if($files == null) {
-            $result->setStatus("failed");
-            $result->setMessage("No files in this category!");
+            $result->setFailMessage("No files in this category!");
             return $result;
         }
         $i = 0;
@@ -51,16 +52,15 @@ class FileRepository extends EntityRepository
 
             $fileDetailes->setFile($file);
             $res .= $fileDetailes->getFileAsJsTree();
+
             $i=1;
         }
         $res .= ']';
-        $result->setStatus("success");
-        $result->setMessage("Files loaded!");
+        $result->setSuccessMessage("Files loaded!");
         $result->setData($res);
         return $result;
     }
 
-    private $entityManager;
     public function saveFileInDatabase(array $data){
         $this->entityManager = $this->getEntityManager();
         $category = $this->entityManager->getRepository(Category::class)->findOneBy(array('user'=>$data['user'],'id'=>$data['categoryId']));
@@ -126,7 +126,7 @@ class FileRepository extends EntityRepository
             $result->setFailMessage('File not found!');
             return $result;
         }
-        if(($file->getCategory()->getUser()!=$user) || !$file->getCategory()->getPermission()->getDownload()) {
+        if($entityManager->getRepository(Permission::class)->hasPermission($file->getCategory(),$file->getCategory()->getUser())) {
             $result->setFailMessage('No download permission!');
             return $result;
         }

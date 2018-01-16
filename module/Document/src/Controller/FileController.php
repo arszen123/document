@@ -12,6 +12,7 @@ namespace Document\Controller;
 
 use Doctrine\ORM\EntityManager;
 use Document\Entity\Category;
+use Document\Entity\Permission;
 use Document\Entity\User;
 use Document\Entity\File;
 use Document\Entity\Version;
@@ -71,7 +72,7 @@ class FileController extends AbstractActionController
             return $responseData->getResponseAsJsonContentType();
         }
 
-        if(!$category->getPermission()->getUpload()){
+        if(!$this->entityManager->getRepository(Permission::class)->hasPermission($category,$this->user)){
             $responseData->setFailMessage('No upload permission to current category!');
             return $responseData->getResponseAsJsonContentType();
         }
@@ -130,7 +131,7 @@ class FileController extends AbstractActionController
             'Content-Disposition' => 'attachment; filename="' . basename($fileData['file']->getFilename()) .'"',
             'Content-Type' => 'application/octet-stream',
             'Content-Length' => filesize($fileName),
-            'Expires' => '@0', // @0, because zf2 parses date as string to \DateTime() object
+            'Expires' => '@0',
             'Cache-Control' => 'must-revalidate',
             'Pragma' => 'public'
         ));

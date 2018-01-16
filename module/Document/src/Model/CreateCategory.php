@@ -24,12 +24,6 @@ class CreateCategory implements InputFilterAwareInterface
     private $data;
     private $inputFilter;
 
-
-    public function exchangeArray(array $data)
-    {
-        $this->name = !empty($data['name']) ? $data['name'] : null;
-        $this->data = $data;
-    }
     public function setInputFilter(InputFilterInterface $inputFilter)
     {
         throw new DomainException(sprintf(

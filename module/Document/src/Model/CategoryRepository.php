@@ -65,15 +65,12 @@ class CategoryRepository extends EntityRepository
         $entityManager = $this->getEntityManager();
         $parentCategory = $entityManager->find(Category::class,(int) $data['id']);
         $response = new ResponseData();
-        if($user == null){
-            $response->setFailMessage('You must log in!');
-            return $response;
-        }
 
-        if($parentCategory != null && !($parentCategory->getPermission()->getUpload() || $this->getUploadPermissionForRoot($parentCategory))){
+        if($user == null || $entityManager->getRepository(Permission::class)->canNotCreateCategory($parentCategory,$user)){
             $response->setFailMessage('No upload permission!');
             return $response;
         }
+
         $permission = new Permission();
         $permission->setDownload(true);
         $permission->setUpload(true);
@@ -104,7 +101,7 @@ class CategoryRepository extends EntityRepository
         return  $category->getPermission()->getUpload();
     }
 
-    public function getRootCategory(Category $category){
+    public function getRootCategory($category){
         if($category->getParent() != null)
             return $this->getRootCategory($category->getParent());
         return  $category;
@@ -114,12 +111,7 @@ class CategoryRepository extends EntityRepository
         $entityManager = $this->getEntityManager();
         $category = $entityManager->find(Category::class,(int) $data['id']);
         $responseData = new ResponseData();
-        if($user == null || $category == null || !$category->getUser() == $user ) {
-            $responseData->setFailMessage('Something went wrong!');
-            return $responseData;
-        }
-
-        if(!$category->getPermission()->getUpload()) {
+        if(!$entityManager->getRepository(Permission::class)->hasEditPermission($category,$user)) {
             $responseData->setFailMessage('No upload permission!');
             return $responseData;
         }
@@ -145,10 +137,14 @@ class CategoryRepository extends EntityRepository
         $remove = 1;
         if($category->getPermission()->getUpload() && !$category->getChildren()->isEmpty())
             $remove = $this->deleteCategoriesRecursivly($category->getChildren());
-        if($remove == 1)
+        if($remove == 1) {
             $this->removeCategory($category);
+            $responseData->setSuccessMessage('Deleted successfully!');
+        }
+        if($remove == 0){
+            $responseData->setFailMessage('Some categories may not been deleted!');
+        }
         $this->entityManager->flush();
-        $responseData->setSuccessMessage('Deleted successfully!');
         return $responseData;
     }
 

@@ -3,10 +3,12 @@ $(function () {
     var filesId = '#files';
     var categoryNameHelperId = '#categoryName';
     var helperId = '#helper';
+    var fileInfoDivId = '.fileInfo';
     var fileInfoId = {visibleName:'#visibleName',filename:'#fileName',version:'#versionNumber',
         uploaded:'#uploadedTime',user:'#uploadedUser'};
     var modal = new jBox('Modal');
     var noticeData = {delayOpen: 1, delayClose: 1, attributes: {y: 'bottom'}};
+    var lastDetailesUrl = null;
     var confirm = new jBox('Confirm', {
         content: 'Do you really want to do this?',
         cancelButton: 'Nope',
@@ -27,6 +29,42 @@ $(function () {
             }
         }
     };
+    var ajaxRequestData = {
+        success: function(data,status,xhr) {
+            if (isJson(xhr)) {
+                if(isSuccess(data.status))
+                    loadCategories();
+                showMessage(data);
+                console.log(data);
+                modal.close();
+            }else{
+                modal.setContent(data);
+                if (!modal.isOpen) {
+                    modal.open();
+                    $('form').submit(makePostRequest);
+                }
+            }
+        }
+    };
+    var uploadFileAjaxData = {
+        success: function(data,status,xhr) {
+            var jsonCt = isJson(xhr);
+            if (!jsonCt) {
+                modal.setTitle('Upload File').setContent(data);
+                if (!modal.isOpen) {
+                    modal.open();
+                    $('form').submit(uploadFileAjaxPost);
+                }
+            }
+            if (jsonCt) {
+                if(isSuccess(data.status))
+                    loadFiles();
+                showMessage(data);
+                modal.close();
+            }
+        }
+    };
+
     /**
      * Init jsTree
      */
@@ -60,99 +98,18 @@ $(function () {
 
     loadCategories();
 
-    $('#createSubCategory').on('click', createSubCategory);
-
-    $('#createRootCategory').on('click', createRootCategory);
-
-    $('#editCategory').on('click',editCategory);
-
-    $('#changePermission').on('click',changePermission);
-
-    $('#deleteCategory').on('click', deleteCategory);
-
-    $(categoriesId).on('select_node.jstree',loadFiles);
-
-    $('#uploadFile').on('click',uploadFileAjaxRequest);
-
-    var lastDetailesUrl = null;
-    $(filesId).on('hover_node.jstree',function (event,node) {
-        url = node.node.a_attr.href;
-        url = url.replace('download','detailes');
-        if(lastDetailesUrl!== url){
-            lastDetailesUrl = url;
-            $.ajax({
-                url:url,
-                method:'GET',
-                success: function(data,status,xhr) {
-                    if (!isJson(xhr)) {
-                        showFailMessage('Something went wrong!');
-                        return;
-                    }
-                    if(isSuccess(data.status)){
-                        setUpFileDetailes(data.data);
-                    }
-                }
-            });
-        }
-    });
-
-    function setUpFileDetailes(data){
-        $(fileInfoId.visibleName).html(data.visibleName);
-        $(fileInfoId.filename).html(data.filename);
-        $(fileInfoId.version).html(data.version);
-        $(fileInfoId.uploaded).html(data.uploaded);
-        $(fileInfoId.user).html(data.user);
-    }
-
     /**
-     * Delete category
+     * Set up actions
      */
-    function deleteCategory() {
-        category = $(categoriesId).jstree(true).get_selected(true);
-        if(category[0]) {
-            confirm.enable();
-            confirm.setContent("Do you really want to delete <font color='red'>" + category[0]['text'] + "</font> category, and it's <font color='red'>sub</font> categories?")
-            deleteAjaxData.url = '/document/category/delete/'+category[0]['id'];
-            confirm.open();
-            category = null;
-        }
-        if(category != null && !category[0]){
-            confirm.close();
-            confirm.disable();
-        }
-    }
-
-    var ajaxRequestData = {
-        success: function(data,status,xhr) {
-            if (isJson(xhr)) {
-                if(isSuccess(data.status))
-                    loadCategories();
-                showMessage(data);
-                console.log(data);
-                modal.close();
-            }else{
-                modal.setContent(data);
-                if (!modal.isOpen) {
-                    modal.open();
-                    $('form').submit(makePostRequest);
-                }
-            }
-        }
-    };
-
-    function makeGetRequest(url) {
-        ajaxRequestData.url = url;
-        delete ajaxRequestData.data;
-        ajaxRequestData.method = 'GET';
-        $.ajax(ajaxRequestData);
-    }
-
-    function makePostRequest(event) {
-        ajaxRequestData.data = $(this).serialize();
-        ajaxRequestData.method = 'POST';
-        $.ajax(ajaxRequestData);
-        event.preventDefault();
-    }
+    $('#createRootCategory').on('click', createRootCategory);
+    $('#createSubCategory').on('click', createSubCategory);
+    $('#editCategory').on('click',editCategory);
+    $('#changePermission').on('click',changePermission);
+    $('#deleteCategory').on('click', deleteCategory);
+    $('#uploadFile').on('click',uploadFileAjaxRequest);
+    $(categoriesId).on('select_node.jstree',loadFiles);
+    $(filesId).on('hover_node.jstree',prepareAndLoadFileDetailes);
+    $(filesId).on('select_node.jstree',downloadFile);
 
     function createRootCategory(){
         modal.setTitle('Create Root category');
@@ -160,7 +117,7 @@ $(function () {
     }
 
     function createSubCategory(){
-            categoryShouldSelected('/document/category/create','Create sub category');
+        categoryShouldSelected('/document/category/create','Create sub category');
     }
 
     function editCategory(){
@@ -181,81 +138,35 @@ $(function () {
         }
     }
 
-    function loadCategories(){
-        load({url:'/document/category/list',jsTreeId:categoriesId});
+    function makeGetRequest(url) {
+        ajaxRequestData.url = url;
+        delete ajaxRequestData.data;
+        ajaxRequestData.method = 'GET';
+        $.ajax(ajaxRequestData);
     }
 
-    function loadFiles(){
-        category = $(categoriesId).jstree(true).get_selected(true)[0];
-        $(categoryNameHelperId).html('Category: <div class="categoryName">'+category['text']+'</div>');
-        load({url:'/document/file/list/'+category['id'],jsTreeId:filesId});
+    function makePostRequest(event) {
+        ajaxRequestData.data = $(this).serialize();
+        ajaxRequestData.method = 'POST';
+        $.ajax(ajaxRequestData);
+        event.preventDefault();
     }
 
-    function load(settings){
-        $.ajax({
-            method:'GET',
-            url: settings.url,
-            success: function(data,status,xhr) {
-                if (isJson(xhr)) {
-                    jstreeData = JSON.stringify($(settings.jsTreeId).jstree(true).settings.core.data);
-                    if(isSuccess(data.status) && data.data && JSON.stringify(data.data) !== jstreeData) {
-                        $(settings.jsTreeId).jstree(true).settings.core.data = data.data;
-                        $(settings.jsTreeId).jstree(true).refresh();
-                        $(helperId).empty();
-                    }
-                    if(isFailed(data.status)){
-                        if(jstreeData !== '[]') {
-                            $(settings.jsTreeId).jstree(true).settings.core.data = [];
-                            $(settings.jsTreeId).jstree(true).refresh();
-                            $(helperId).html('No files in this category!');
-                        }
-                    }
-                }
-
-            }
-        });
-    }
-
-    /**
-     * Download file
-     */
-    $(filesId).on('select_node.jstree',function(event,node){
-        url = node.node.a_attr.href;
-        $.ajax({
-            url:url,
-            type: 'POST',
-            success: function(data,status,xhr) {
-                if (isJson(xhr)) {
-                    showMessage(data);
-                }else {
-                    window.location = url;
-                }
-                $(filesId).jstree(true).deselect_all(true);
-            }
-        });
-    });
-
-    /**
-     * Upload file
-     */
-    var uploadFileAjaxData = {
-        success: function(data,status,xhr) {
-            var jsonCt = isJson(xhr);
-            if (!jsonCt) {
-                modal.setTitle('Upload File').setContent(data);
-                if (!modal.isOpen) {
-                    modal.open();
-                    $('form').submit(uploadFileAjaxPost);
-                }
-            }
-            if (jsonCt) {
-                if(isSuccess(data.status))
-                    loadFiles();
-                showMessage(data);
-                modal.close();
-            }
+    function deleteCategory() {
+        category = $(categoriesId).jstree(true).get_selected(true);
+        if(category[0]) {
+            confirm.enable();
+            confirm.setContent("Do you really want to delete <font color='red'>" + category[0]['text'] + "</font> category, and it's <font color='red'>sub</font> categories?")
+            deleteAjaxData.url = '/document/category/delete/'+category[0]['id'];
+            confirm.open();
+            category = null;
         }
-    };
+        if(category != null && !category[0]){
+            confirm.close();
+            confirm.disable();
+        }
+    }
+
 
     function uploadFileAjaxRequest(){
         category = $(categoriesId).jstree(true).get_selected(true);
@@ -286,6 +197,96 @@ $(function () {
         $.ajax(uploadFileAjaxData);
     }
 
+    function downloadFile(event,node){
+        url = node.node.a_attr.href;
+        $.ajax({
+            url:url,
+            type: 'POST',
+            success: function(data,status,xhr) {
+                if (isJson(xhr)) {
+                    showMessage(data);
+                }else {
+                    window.location = url;
+                }
+                $(filesId).jstree(true).deselect_all(true);
+            }
+        });
+    }
+
+    function loadCategories(){
+        load({url:'/document/category/list',jsTreeId:categoriesId});
+    }
+
+    function loadFiles(){
+        category = $(categoriesId).jstree(true).get_selected(true)[0];
+        $(categoryNameHelperId).html('Category: <div class="categoryName">'+category['text']+'</div>');
+        load({url:'/document/file/list/'+category['id'],jsTreeId:filesId});
+    }
+
+    function load(settings){
+        $.ajax({
+            method:'GET',
+            url: settings.url,
+            success: function(data,status,xhr) {
+                if (isJson(xhr)) {
+                    jstreeData = JSON.stringify($(settings.jsTreeId).jstree(true).settings.core.data);
+                    if(isSuccess(data.status) && data.data && JSON.stringify(data.data) !== jstreeData) {
+                        $(settings.jsTreeId).jstree(true).settings.core.data = data.data;
+                        $(settings.jsTreeId).jstree(true).refresh();
+                        $(helperId).empty();
+                    }
+                    if(isFailed(data.status)){
+                        if(jstreeData !== '[]') {
+                            $(settings.jsTreeId).jstree(true).settings.core.data = [];
+                            $(settings.jsTreeId).jstree(true).refresh();
+                            $(helperId).html('No files in this category!');
+                            removeFileDetailes();
+                        }
+                    }
+                }
+
+            }
+        });
+    }
+
+    function prepareAndLoadFileDetailes(event,node){
+            url = node.node.a_attr.href;
+            url = url.replace('download','detailes');
+
+            if(lastDetailesUrl!== url) {
+                lastDetailesUrl = url;
+                loadFileDetailes(url);
+            }
+    }
+
+    function loadFileDetailes(url){
+        $.ajax({
+            url:url,
+            method:'GET',
+            success: function(data,status,xhr) {
+                if (!isJson(xhr)) {
+                    showFailMessage('Something went wrong!');
+                    return;
+                }
+                if(isSuccess(data.status)){
+                    setUpFileDetailes(data.data);
+                }
+            }
+        });
+    }
+    function setUpFileDetailes(data){
+        $(fileInfoId.visibleName).html(data.visibleName);
+        $(fileInfoId.filename).html(data.filename);
+        $(fileInfoId.version).html(data.version);
+        $(fileInfoId.uploaded).html(data.uploaded);
+        $(fileInfoId.user).html(data.user);
+    }
+
+    function removeFileDetailes() {
+        elements = $(fileInfoDivId+' div');
+        for(i=0;i<elements.length;i++)
+            $(elements[i]).html('-');
+    }
 
     /**
      * HELPERS

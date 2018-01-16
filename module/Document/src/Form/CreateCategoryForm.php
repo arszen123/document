@@ -36,6 +36,7 @@ class CreateCategoryForm extends Form
             'attributes' => [
                 'value' => 'Create category',
                 'id'    => 'submitbutton',
+                'class' => 'btn btn-primary'
             ],
         ]);
     }

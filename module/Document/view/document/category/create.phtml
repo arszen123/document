@@ -5,7 +5,7 @@ $title = 'Create category';
 ?>
     <h1><?= $this->escapeHtml($title) ?></h1>
 <?php
-$form->setAttribute('action', $this->url('category', ['action' => 'create']));//$this->url('document/category', ['action' => 'create']));
+$form->setAttribute('action', $this->url('category', ['action' => 'create']));
 $form->prepare();
 
 echo $this->form()->openTag($form) ?>

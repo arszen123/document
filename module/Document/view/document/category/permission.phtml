@@ -5,7 +5,7 @@ $title = 'Change permission';
 ?>
     <h1><?= $this->escapeHtml($title) ?></h1>
 <?php
-$form->setAttribute('action', '/document/category/permission');//$this->url('document/category', ['action' => 'create']));
+$form->setAttribute('action', $this->url('category', ['action' => 'permission','id'=>$cid]));
 $form->prepare();
 
 echo $this->form()->openTag($form); ?>

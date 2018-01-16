@@ -51,7 +51,7 @@ class UploadFileForm extends Form
             'attributes' => [
                 'value' => 'Upload',
                 'id'    => 'submitbutton',
-                'class' => 'btn btn-default'
+                'class' => 'btn btn-primary'
             ],
         ]);
 

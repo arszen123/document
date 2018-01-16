@@ -53,7 +53,7 @@ class EditPermissionForm extends Form
             'attributes' => [
                 'value' => 'Save',
                 'id'    => 'submitbutton',
-                'class' => 'btn btn-default'
+                'class' => 'btn btn-primary'
             ],
         ]);
     }

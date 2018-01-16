@@ -5,7 +5,7 @@ $title = 'Edit category';
 ?>
     <h1><?= $this->escapeHtml($title) ?></h1>
 <?php
-$form->setAttribute('action', $this->url('category', ['action' => 'edit']));//$this->url('document/category', ['action' => 'create']));
+$form->setAttribute('action', $this->url('category', ['action' => 'edit','id'=>$cid]));//$this->url('document/category', ['action' => 'create']));
 $form->setAttribute('name', 'editCategoryForm');
 $form->prepare();
 

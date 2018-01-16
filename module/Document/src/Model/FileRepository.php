@@ -43,20 +43,14 @@ class FileRepository extends EntityRepository
             return $result;
         }
         $i = 0;
+        $fileDetailes = new FileDetailes();
         $res = '[';
         foreach ($files as $file){
             if($i==1)
                 $res .= ',';
-            $res .= '{';
-            $res .= '"text":"'.$file->getVersions()->last()->getName();
-            $res .= '   <b>v'.$file->getVersions()->last()->getVersion().'.0</b>",';
-            $res .= '"id":"'.$file->getId().'",';
-            $res .= '"a_attr":{';
-            $res .= '"href":"/document/file/download/'.$file->getId().'"';
-            $res .= '}';
-            if($file->getVersions()->count()>1)
-                $res .= ',"children":'.$this->getVersionsAsJson($file);
-            $res .= '}';
+
+            $fileDetailes->setFile($file);
+            $res .= $fileDetailes->getFileAsJsTree();
             $i=1;
         }
         $res .= ']';
@@ -64,29 +58,6 @@ class FileRepository extends EntityRepository
         $result->setMessage("Files loaded!");
         $result->setData($res);
         return $result;
-    }
-
-    private function getVersionsAsJson(File $file){
-        $version = $file->getVersions();
-        $length = $version->count()-1;
-        $res = '[';
-        for($i = $length;$i>=0;$i--) {
-            if($i!=$length)
-                $res .= ',';
-            $res .= '{';
-            $res .= '"text":"'.$version[$i]->getName();
-            $res .= ' v'.$version[$i]->getVersion().'.0';
-            $res .= ' <b>UPLOADED:</b> '.$version[$i]->getUploaded()->format("Y.m.d H:i:s");
-            $res .= ' <b>USER:</b> '.$version[$i]->getUser()->getName();
-            $res .= '",';
-            $res .= '"id":"v'.$version[$i]->getId().'",';
-            $res .= '"a_attr":{';
-                $res .= '"href":"/document/file/download/'.$file->getId().'/version/'.$version[$i]->getId().'"';
-                $res .= '}';
-            $res .= '}';
-        }
-        $res .= ']';
-        return $res;
     }
 
     private $entityManager;
@@ -138,7 +109,15 @@ class FileRepository extends EntityRepository
         return $file->getId().'_'.$version->getId();
     }
 
-    public function getFile($fileId, $versionId){
+    /**
+     * @param $fileId
+     * @param $versionId
+     * @return array['file','version','versionName']\ResponseData
+     * @throws \Doctrine\ORM\ORMException
+     * @throws \Doctrine\ORM\OptimisticLockException
+     * @throws \Doctrine\ORM\TransactionRequiredException
+     */
+    public function getFile($fileId, $versionId, $user =null){
         $entityManager = $this->getEntityManager();
         $result = new ResponseData();
         $file = $entityManager->find(File::class,$fileId);
@@ -147,25 +126,31 @@ class FileRepository extends EntityRepository
             $result->setFailMessage('File not found!');
             return $result;
         }
-        if(!$file->getCategory()->getPermission()->getDownload()) {
+        if(($file->getCategory()->getUser()!=$user) || !$file->getCategory()->getPermission()->getDownload()) {
             $result->setFailMessage('No download permission!');
             return $result;
         }
-        $fileName = $file->getFilename();
-        $extension = explode('.',$fileName);
-        $extension = $extension[sizeof($extension)-1];
         if($versionId==0) {
-            $versionName = $file->getCategory()->getId() . '_' . $file->getId() . '_' . $file->getVersions()->last()->getId();
-            return ['fileName' => $fileName, 'versionName' =>$versionName.'.'.$extension];
+            $version = $file->getVersions()->last();
+            $versionName = $this->getFileSavedName($file,$version);
+            return ['file' => $file,'version'=>$version, 'versionName' =>$versionName];
         }
 
         foreach ($file->getVersions() as $version) {
-            if($version->getId()==$versionId)
-                $versionName = $file->getCategory()->getId() . '_' . $file->getId() . '_' . $version->getId();
-                return ['fileName'=>$fileName,'versionName'=>$versionName.'.'.$extension];
+            if($version->getId()==$versionId) {
+                $versionName = $this->getFileSavedName($file, $version);
+                return ['file' => $file, 'version' => $version, 'versionName' => $versionName];
+            }
         }
 
         $result->setFailMessage('Version not found!');
         return $result;
+    }
+
+    public function getFileSavedName(File $file, Version $version){
+        $fileName = $file->getFilename();
+        $extension = explode('.',$fileName);
+        $extension = $extension[sizeof($extension)-1];
+        return $file->getCategory()->getId().'_'.$file->getId().'_'.$version->getId().'.'.$extension;
     }
 }

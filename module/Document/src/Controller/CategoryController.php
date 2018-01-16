@@ -20,6 +20,9 @@ use Document\Model\EditPermission;
 use Document\Model\ResponseData;
 use Zend\Mvc\Controller\AbstractActionController;
 use Zend\Mvc\Controller\AbstractRestfulController;
+use Zend\Session\Config\StandardConfig;
+use Zend\Session\Container;
+use Zend\Session\SessionManager;
 use Zend\View\Model\ViewModel;
 
 class CategoryController extends AbstractActionController
@@ -27,10 +30,10 @@ class CategoryController extends AbstractActionController
     private $entityManager;
     private $user;
 
-    public function __construct(EntityManager $entityManager)
+    public function __construct(EntityManager $entityManager, User $user)
     {
         $this->entityManager = $entityManager;
-        $this->user = $this->entityManager->find(User::class,1);
+        $this->user = $user;
     }
 
     public function indexAction()
@@ -48,7 +51,14 @@ class CategoryController extends AbstractActionController
     public function createAction(){
         $viewModel = new ViewModel();
         $viewModel->setTerminal(true);
+        $id = (int) $this->params()->fromRoute('id', 0);
+        $responseData = new ResponseData($this->getResponse());
 
+        $category = $this->entityManager->find(Category::class,$id);
+        if($category != null && !$category->getPermission()->getUpload()){
+            $responseData->setFailMessage('No upload permission!');
+            return $responseData->getResponseAsJsonContentType();
+        }
 
         $request = $this->getRequest();
 
@@ -69,7 +79,6 @@ class CategoryController extends AbstractActionController
             return $viewModel;
         }
 
-        $id = (int) $this->params()->fromRoute('id', 0);
         $data = $form->getData();
 
         $data['id'] = $id;
@@ -84,13 +93,24 @@ class CategoryController extends AbstractActionController
     public function editAction(){
         $viewModel = new ViewModel();
         $viewModel->setTerminal(true);
-
-
         $request = $this->getRequest();
+        $id = (int) $this->params()->fromRoute('id', 0);
+        $responseData = new ResponseData($this->getResponse());
+
+        $category = $this->entityManager->find(Category::class,$id);
+        if($category == null ){
+            $responseData->setFailMessage('Category not found!');
+            return $responseData->getResponseAsJsonContentType();
+        }
+
+        if(!$category->getPermission()->getUpload()){
+            $responseData->setFailMessage('No upload permission!');
+            return $responseData->getResponseAsJsonContentType();
+        }
 
         $form = new CreateCategoryForm();
         $form->get('submit')->setValue('Edit Category');
-
+        $form->get('name')->setValue($category->getName());
         if(!$request->isPost()){
             $viewModel->setVariables(array('form' => $form));
             return $viewModel;
@@ -103,13 +123,6 @@ class CategoryController extends AbstractActionController
         if(!$form->isValid()){
             $viewModel->setVariables(array('form' => $form));
             return $viewModel;
-        }
-
-        $id = (int) $this->params()->fromRoute('id', 0);
-        $responseData = new ResponseData($this->getResponse());
-        if($id == 0){
-            $responseData->setFailMessage('Category not found!');
-            return $responseData->getResponseAsJsonContentType();
         }
 
         $data = $form->getData();
@@ -125,11 +138,10 @@ class CategoryController extends AbstractActionController
     //TODO its complex
     public function deleteAction(){
         $id = (int) $this->params()->fromRoute('id', 0);
-        if($id != 0)
-            $this->entityManager->getRepository(Category::class)->deleteCategory($this->user,$id);
-        $response = $this->getResponse()
-            ->setContent('deleted');
-        return $response;
+
+        $response = $this->entityManager->getRepository(Category::class)->deleteCategory($this->user,$id);
+        $response->setResponse($this->getResponse());
+        return $response->getResponseAsJsonContentType();
     }
 
     public function permissionAction(){

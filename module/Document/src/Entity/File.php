@@ -86,7 +86,7 @@ class File
     }
 
     /**
-     * @return mixed
+     * @return Category
      */
     public function getCategory()
     {

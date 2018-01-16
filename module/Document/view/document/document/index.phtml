@@ -1,17 +1,25 @@
-<?php $this->headLink()->appendStylesheet($this->basePath('/css/main.css')) ?>
-<?php $this->headScript()->prependFile($this->basePath('/js/document/category.js')) ?>
-<?php $this->headScript()->prependFile($this->basePath('/js/jBox/jBox.Confirm.min.js')) ?>
-<?php $this->headScript()->prependFile($this->basePath('/js/jBox/jBox.Notice.min.js')) ?>
-<?php $this->headLink()->appendStylesheet($this->basePath('/css/jBox/jBox.css')) ?>
-<?php $this->headLink()->appendStylesheet($this->basePath('/css/jBox/jBox.Confirm.css')) ?>
-<?php $this->headLink()->appendStylesheet($this->basePath('/css/jBox/jBox.Notice.css')) ?>
+<button class="btn btn-default"id="createSubCategory">Create sub category</button>
+<button class="btn btn-default" id="createRootCategory">Create root category</button>
+<button class="btn btn-default" id="editCategory">Edit category name</button>
+<button class="btn btn-default" id="changePermission">Change permission</button>
+<button class="btn btn-danger" id="deleteCategory" data-confirm>Delete category</button>
+<button class="btn btn-default" id="uploadFile">Upload File</button>
+<p class="boxName">Categories</p>
 <div id="categories">
 </div>
-<button id="createSubCategory">Create sub category</button>
-<button id="createRootCategory">Create root category</button>
-<button id="editCategory">Edit category</button>
-<button id="changePermission">Change permission!</button>
-<button class="target-click" id="deleteCategory" data-confirm style="color: red">Delete category</button>
-<button id="uploadFile">Upload File</button>
+<p class="boxName">Files</p>
+<div class="infoTable">
+<div class="infoTableRow">
+    <div id="categoryName"></div>
+    <div id="helper"></div>
+</div>
+<div class="infoTableRow fileInfo">
+    File saved name: <div id="visibleName">-</div></br>
+    File uploaded name: <div id="fileName">-</div></br>
+    Version number: <div id="versionNumber">-</div></br>
+    Uploaded: <div id="uploadedTime">-</div></br>
+    User: <div id="uploadedUser">-</div></br>
+</div>
+</div>
 <div id="files">
 </div>

@@ -1,43 +1,62 @@
 $(function () {
-    //TODO clean the mess!!! LAST
+    var categoriesId = '#categories';
+    var filesId = '#files';
+    var categoryNameHelperId = '#categoryName';
+    var helperId = '#helper';
+    var fileInfoId = {visibleName:'#visibleName',filename:'#fileName',version:'#versionNumber',
+        uploaded:'#uploadedTime',user:'#uploadedUser'};
     var modal = new jBox('Modal');
-    var categoryAjaxData;
     var noticeData = {delayOpen: 1, delayClose: 1, attributes: {y: 'bottom'}};
     var confirm = new jBox('Confirm', {
         content: 'Do you really want to do this?',
         cancelButton: 'Nope',
         confirmButton: 'Sure do!',
-        confirm: deleteCategoryAjaxRequest
+        confirm: function () {
+            $.ajax(deleteAjaxData);
+        }
     });
     var deleteAjaxData = {
         method:'GET',
-        success:function(){
-            noticeData.content = 'Category deleted!';
-            noticeData.color = 'green';
-            new jBox('Notice', noticeData).open();
-            loadCategories();
+        success:function(data,status,xhr){
+            if(isJson(xhr)) {
+                if(isSuccess(data.status)){
+                    loadCategories();
+                    showSuccessMessage(data.message);
+                }
+                ifFailShowMessage(data);
+            }
         }
     };
     /**
      * Init jsTree
      */
-    $('#categories').jstree({ 'core' : {
-            "check_callback" : true,
-            "themes" : { "stripes" : true },
-            "plugins" : [
-                "contextmenu", "dnd", "search",
-                "state", "types", "wholerow"
-            ]
-        } });
+    $(categoriesId).jstree({ 'core' : {
+            "multiple":false
+        },"types" : {
+            "root" : {
+                "icon" : "glyphicon glyphicon-tree-deciduous"
+            },
+            "default" : {
+                "icon" : "glyphicon glyphicon-folder-open"
+            }
+        },
+        "plugins" : [
+            "types", "wholerow"
+        ]
+    });
 
-    $('#files').jstree({ 'core' : {
-            "check_callback" : true,
-            "themes" : { "stripes" : true },
-            "plugins" : [
-                "contextmenu", "dnd", "search",
-                "state", "types", "wholerow"
-            ]
-        } });
+    $(filesId).jstree({ 'core' : {
+            "multiple":false
+        },
+        "types" : {
+            "default" : {
+                "icon" : "glyphicon glyphicon-file"
+            }
+        },
+        "plugins" : [
+            "types", "wholerow"
+        ]
+    });
 
     loadCategories();
 
@@ -51,16 +70,45 @@ $(function () {
 
     $('#deleteCategory').on('click', deleteCategory);
 
-    $('#categories').on('select_node.jstree',loadFiles);
+    $(categoriesId).on('select_node.jstree',loadFiles);
 
     $('#uploadFile').on('click',uploadFileAjaxRequest);
 
+    var lastDetailesUrl = null;
+    $(filesId).on('hover_node.jstree',function (event,node) {
+        url = node.node.a_attr.href;
+        url = url.replace('download','detailes');
+        if(lastDetailesUrl!== url){
+            lastDetailesUrl = url;
+            $.ajax({
+                url:url,
+                method:'GET',
+                success: function(data,status,xhr) {
+                    if (!isJson(xhr)) {
+                        showFailMessage('Something went wrong!');
+                        return;
+                    }
+                    if(isSuccess(data.status)){
+                        setUpFileDetailes(data.data);
+                    }
+                }
+            });
+        }
+    });
+
+    function setUpFileDetailes(data){
+        $(fileInfoId.visibleName).html(data.visibleName);
+        $(fileInfoId.filename).html(data.filename);
+        $(fileInfoId.version).html(data.version);
+        $(fileInfoId.uploaded).html(data.uploaded);
+        $(fileInfoId.user).html(data.user);
+    }
 
     /**
      * Delete category
      */
     function deleteCategory() {
-        category = $("#categories").jstree(true).get_selected(true);
+        category = $(categoriesId).jstree(true).get_selected(true);
         if(category[0]) {
             confirm.enable();
             confirm.setContent("Do you really want to delete <font color='red'>" + category[0]['text'] + "</font> category, and it's <font color='red'>sub</font> categories?")
@@ -68,203 +116,99 @@ $(function () {
             confirm.open();
             category = null;
         }
-        if(!category[0]){
+        if(category != null && !category[0]){
             confirm.close();
             confirm.disable();
-            wrongRequest('Select a category first!')
         }
     }
 
-    function deleteCategoryAjaxRequest(){
-        $.ajax(deleteAjaxData);
+    var ajaxRequestData = {
+        success: function(data,status,xhr) {
+            if (isJson(xhr)) {
+                if(isSuccess(data.status))
+                    loadCategories();
+                showMessage(data);
+                console.log(data);
+                modal.close();
+            }else{
+                modal.setContent(data);
+                if (!modal.isOpen) {
+                    modal.open();
+                    $('form').submit(makePostRequest);
+                }
+            }
+        }
+    };
+
+    function makeGetRequest(url) {
+        ajaxRequestData.url = url;
+        delete ajaxRequestData.data;
+        ajaxRequestData.method = 'GET';
+        $.ajax(ajaxRequestData);
     }
 
-    /**
-     * Create category
-     */
+    function makePostRequest(event) {
+        ajaxRequestData.data = $(this).serialize();
+        ajaxRequestData.method = 'POST';
+        $.ajax(ajaxRequestData);
+        event.preventDefault();
+    }
 
     function createRootCategory(){
-        createCategoryForm('/document/category/create');
+        modal.setTitle('Create Root category');
+        makeGetRequest('/document/category/create');
     }
 
     function createSubCategory(){
-        data = $("#categories").jstree(true).get_selected(false);
-        if(data) {
-            createCategoryForm('/document/category/create/' + data);
-        }
+            categoryShouldSelected('/document/category/create','Create sub category');
     }
-    categoryAjaxData = {
-        success: function(data,status,xhr) {
-            var ct = xhr.getResponseHeader("content-type") || "";
-            if (ct.indexOf('json') > -1) {
-                if (data.status === 'success') {
-                    successAction(data.message);
-                }
-            }else{
-                modal.setTitle('Create Category').setContent(data);
-                if (!modal.isOpen) {
-                    modal.open();
-                    $('#createCategoryForm').submit(createCategoryPost);
-                }
-            }
-        }
-    };
-    function createCategoryForm(url) {
-        categoryAjaxData.url = url;
-        delete categoryAjaxData.data;
-        categoryAjaxData.method = 'GET';
-        $.ajax(categoryAjaxData);
-    }
-
-    function createCategoryPost(event) {
-        categoryAjaxData.data = 'name='+$('#name').val();
-        categoryAjaxData.method = 'POST';
-        $.ajax(categoryAjaxData);
-        event.preventDefault();
-    }
-
-    /**
-     * Edit Category
-     */
-
-    var editCategoryAjaxData = {
-        success: function(data,status,xhr) {
-            var ct = xhr.getResponseHeader("content-type") || "";
-            if (ct.indexOf('json') > -1) {
-                if (data.status === 'success') {
-                    successAction(data.message);
-                }
-            }else{
-                modal.setTitle('Edit Category').setContent(data);
-                if (!modal.isOpen) {
-                    modal.open();
-                    $('#name').val(this.text);
-                    delete this.text;
-                    $('#editCategoryForm').submit(editCategoryPost);
-                }
-            }
-        }
-    };
 
     function editCategory(){
-        category = $("#categories").jstree(true).get_selected(true);
-        if(category[0]) {
-            editCategoryAjaxData.url = '/document/category/edit/'+category[0]['id'];
-            editCategoryAjaxData.method = 'GET';
-            editCategoryAjaxData.text = category[0]['text'];
-            $.ajax(editCategoryAjaxData);
-            category = null;
-        }
-        if(category != null && !category[0]){
-            wrongRequest('Select a category first!')
-        }
+        categoryShouldSelected('/document/category/edit','Edit category');
     }
-
-    function editCategoryPost(event){
-        event.preventDefault();
-        editCategoryAjaxData.data = 'name='+$('#name').val();
-        editCategoryAjaxData.method = 'POST';
-        $.ajax(editCategoryAjaxData);
-    }
-
-    /**
-     * Change permission
-     */
-
-    var changePermissionAjaxData = {
-        success: function(data,status,xhr) {
-            var ct = xhr.getResponseHeader("content-type") || "";
-            if (ct.indexOf('json') > -1) {
-                if (data.status === 'success') {
-                    successAction(data.message);
-                }
-            }else{
-                modal.setTitle('Edit Category').setContent(data);
-                if (!modal.isOpen) {
-                    modal.open();
-                    $('#editPermissionForm').submit(changePermissionPost);
-                }
-            }
-        }
-    };
 
     function changePermission(){
-        category = $("#categories").jstree(true).get_selected(true);
-        if(category[0]) {
-            changePermissionAjaxData.url = '/document/category/permission/'+category[0]['id'];
-            changePermissionAjaxData.method = 'GET';
-            $.ajax(changePermissionAjaxData);
-            category = null;
+        categoryShouldSelected('/document/category/permission','Edit category');
+    }
+
+    function categoryShouldSelected(url,title){
+        data = $(categoriesId).jstree(true).get_selected(false);
+        if(data>0) {
+            modal.setTitle(title);
+            makeGetRequest(url +'/'+data);
+        }else{
+            showFailMessage('Select a category first!')
         }
-        if(category != null && !category[0]){
-            wrongRequest('Select a category first!')
-        }
     }
 
-    function changePermissionPost(event){
-        event.preventDefault();
-        changePermissionAjaxData.data = $( this ).serialize();
-        changePermissionAjaxData.method = 'POST';
-        $.ajax(changePermissionAjaxData);
-    }
-
-    /**
-     * Helpers
-     */
-    function successAction(content){
-        noticeData.content = content;
-        noticeData.color = 'green';
-        new jBox('Notice', noticeData).open();
-        modal.setContent('');
-        modal.close();
-        loadCategories();
-    }
-
-    function wrongRequest(content){
-        noticeData.content = content;
-        noticeData.color = 'red';
-        new jBox('Notice', noticeData).open();
-    }
-    /**
-     * Load categories
-     */
     function loadCategories(){
-        $.ajax({
-            method:'GET',
-            url:'/document/category/list',
-            success: function(data){
-                $("#categories").jstree(true).settings.core.data = data.data;
-                $("#categories").jstree(true).refresh();
-                noticeData.content = data.message;
-                noticeData.color = 'green';
-                new jBox('Notice', noticeData).open();
-            }
-        });
+        load({url:'/document/category/list',jsTreeId:categoriesId});
     }
-
-    /**
-     * Files
-     */
 
     function loadFiles(){
-        id = $("#categories").jstree(true).get_selected(true)[0]['id'];
+        category = $(categoriesId).jstree(true).get_selected(true)[0];
+        $(categoryNameHelperId).html('Category: <div class="categoryName">'+category['text']+'</div>');
+        load({url:'/document/file/list/'+category['id'],jsTreeId:filesId});
+    }
+
+    function load(settings){
         $.ajax({
             method:'GET',
-            url:'/document/file/list/'+id,
+            url: settings.url,
             success: function(data,status,xhr) {
-                var ct = xhr.getResponseHeader("content-type") || "";
-                if (ct.indexOf('json') > -1) {
-                    if(data.status == 'success') {
-                        $("#files").jstree(true).settings.core.data = data.data;
-                        $("#files").jstree(true).refresh();
-                        noticeData.content = data.message;
-                        noticeData.color = 'green';
-                        new jBox('Notice', noticeData).open();
+                if (isJson(xhr)) {
+                    jstreeData = JSON.stringify($(settings.jsTreeId).jstree(true).settings.core.data);
+                    if(isSuccess(data.status) && data.data && JSON.stringify(data.data) !== jstreeData) {
+                        $(settings.jsTreeId).jstree(true).settings.core.data = data.data;
+                        $(settings.jsTreeId).jstree(true).refresh();
+                        $(helperId).empty();
                     }
-                    if(data.status == 'failed'){
-                        wrongRequest(data.message);
-                        $("#files").jstree(true).settings.core.data = [];
-                        $("#files").jstree(true).refresh();
+                    if(isFailed(data.status)){
+                        if(jstreeData !== '[]') {
+                            $(settings.jsTreeId).jstree(true).settings.core.data = [];
+                            $(settings.jsTreeId).jstree(true).refresh();
+                            $(helperId).html('No files in this category!');
+                        }
                     }
                 }
 
@@ -275,19 +219,18 @@ $(function () {
     /**
      * Download file
      */
-    $('#files').on('select_node.jstree',function(event,node){
+    $(filesId).on('select_node.jstree',function(event,node){
         url = node.node.a_attr.href;
         $.ajax({
             url:url,
             type: 'POST',
             success: function(data,status,xhr) {
-                var ct = xhr.getResponseHeader("content-type") || "";
-                if (ct.indexOf('json') > -1) {
-                    wrongRequest(data.message)
+                if (isJson(xhr)) {
+                    showMessage(data);
                 }else {
                     window.location = url;
                 }
-                $('#files').jstree(true).deselect_all(true);
+                $(filesId).jstree(true).deselect_all(true);
             }
         });
     });
@@ -297,27 +240,25 @@ $(function () {
      */
     var uploadFileAjaxData = {
         success: function(data,status,xhr) {
-            var ct = xhr.getResponseHeader("content-type") || "";
-            if (ct.indexOf('html') > -1) {
+            var jsonCt = isJson(xhr);
+            if (!jsonCt) {
                 modal.setTitle('Upload File').setContent(data);
                 if (!modal.isOpen) {
                     modal.open();
-                    $('#uploadFileForm').submit(uploadFileAjaxPost);
+                    $('form').submit(uploadFileAjaxPost);
                 }
             }
-            console.log(ct);
-            if (ct.indexOf('json') > -1) {
-                console.log(data);
-                noticeData.content = data.message;
-                noticeData.color = 'green';
-                new jBox('Notice', noticeData).open();
-                loadFiles();
+            if (jsonCt) {
+                if(isSuccess(data.status))
+                    loadFiles();
+                showMessage(data);
+                modal.close();
             }
         }
     };
 
     function uploadFileAjaxRequest(){
-        category = $("#categories").jstree(true).get_selected(true);
+        category = $(categoriesId).jstree(true).get_selected(true);
         if(category[0]) {
             uploadFileAjaxData.url = '/document/file/upload/'+category[0]['id'];
             uploadFileAjaxData.method = 'GET';
@@ -330,15 +271,12 @@ $(function () {
             category = null;
         }
         if(category != null && !category[0]){
-            wrongRequest('Select a category first!')
+            showFailMessage('Select a category first!');
         }
     }
 
     function uploadFileAjaxPost(event){
         event.preventDefault();
-        form_data = new FormData();
-        form_data.append('fileToUpload',$('#fileToUpload').prop('files')[0]);
-        form_data.append('fileName',$('#fileName').val());
         uploadFileAjaxData.data = new FormData(this);
         uploadFileAjaxData.method = 'POST';
         uploadFileAjaxData.enctype = 'multipart/form-data';
@@ -346,5 +284,48 @@ $(function () {
         uploadFileAjaxData.contentType = false;
         uploadFileAjaxData.processData = false;
         $.ajax(uploadFileAjaxData);
+    }
+
+
+    /**
+     * HELPERS
+     */
+    function isJson(xhr) {
+        ct = xhr.getResponseHeader("content-type") || "";
+        return (ct.indexOf('json') > -1);
+    }
+
+    function showMessage(data){
+        ifSuccessShowMessage(data);
+        ifFailShowMessage(data);
+    }
+    function ifSuccessShowMessage(data){
+        if(isSuccess(data.status)){
+            showSuccessMessage(data.message)
+        }
+    }
+    function isSuccess(data){
+        return data === 'success';
+    }
+
+    function showSuccessMessage(content){
+        noticeData.content = content;
+        noticeData.color = 'green';
+        new jBox('Notice', noticeData).open();
+    }
+
+    function ifFailShowMessage(data){
+        if(isFailed(data.status)){
+            showFailMessage(data.message)
+        }
+    }
+    function isFailed(data){
+        return data === 'failed';
+    }
+
+    function showFailMessage(content){
+        noticeData.content = content;
+        noticeData.color = 'red';
+        new jBox('Notice', noticeData).open();
     }
 });

@@ -11,13 +11,12 @@ namespace Document\Model;
 
 use Doctrine\ORM\EntityRepository;
 use Document\Entity\Category;
+use Document\Entity\File;
 use Document\Entity\User;
 use Document\Entity\Permission;
 
 /**
- * TODO MANY :D
- * TODO send back error as json
- * TODO delete categories if the user has upload permission only else then stop delete current tree
+ * TODO delete categories if the user has upload permission only else stop delete current tree
  */
 class CategoryRepository extends EntityRepository
 {
@@ -52,9 +51,10 @@ class CategoryRepository extends EntityRepository
             $result .= '{';
             $result .= '"id":"'.$category->getId().'"';
             $result .= ',"text":"'.$category->getName().'"';
-            if(!$category->getChildren()->isEmpty()) {
+            if($category->getParent() == null)
+                $result .= ',"type":"root"';
+            if(!$category->getChildren()->isEmpty())
                 $result .= ',"children":' . $this->buildJstree($category->getChildren());
-            }
             $result .= '}';
             $i = 1;
         }
@@ -70,7 +70,7 @@ class CategoryRepository extends EntityRepository
             return $response;
         }
 
-        if($parentCategory != null && !$parentCategory->getPermission()->getUpload()){
+        if($parentCategory != null && !($parentCategory->getPermission()->getUpload() || $this->getUploadPermissionForRoot($parentCategory))){
             $response->setFailMessage('No upload permission!');
             return $response;
         }
@@ -98,6 +98,18 @@ class CategoryRepository extends EntityRepository
         return $response;
     }
 
+    private function getUploadPermissionForRoot(Category $category){
+        if($category->getParent() != null)
+            return $this->getUploadPermissionForRoot($category->getParent());
+        return  $category->getPermission()->getUpload();
+    }
+
+    public function getRootCategory(Category $category){
+        if($category->getParent() != null)
+            return $this->getRootCategory($category->getParent());
+        return  $category;
+    }
+
     public function editCategory(User $user,array $data){
         $entityManager = $this->getEntityManager();
         $category = $entityManager->find(Category::class,(int) $data['id']);
@@ -115,43 +127,67 @@ class CategoryRepository extends EntityRepository
         $category->setName($data['name']);
         $entityManager->flush();
 
-        $responseData->setFailMessage('Successfully edited!');
+        $responseData->setSuccessMessage('Successfully edited!');
         return $responseData;
     }
 
     public function deleteCategory(User $user, $id){
         $this->entityManager = $this->getEntityManager();
         $this->user = $user;
+        $responseData = new ResponseData();
+        $category = $this->entityManager->getRepository(Category::class)
+            ->findOneBy(array('user'=>$user,'id'=>$id));
 
-        $category = $this->entityManager->find(Category::class,(int) $id);
-        if(!$category->getChildren()->isEmpty())
-            $this->deleteCategoriesRecursivly($category->getChildren());
-        $this->removeCategory($category);
+        if($category == null) {
+            $responseData->setFailMessage('Category not found!');
+            return $responseData;
+        }
+        $remove = 1;
+        if($category->getPermission()->getUpload() && !$category->getChildren()->isEmpty())
+            $remove = $this->deleteCategoriesRecursivly($category->getChildren());
+        if($remove == 1)
+            $this->removeCategory($category);
         $this->entityManager->flush();
-
+        $responseData->setSuccessMessage('Deleted successfully!');
+        return $responseData;
     }
 
     private function deleteCategoriesRecursivly($categories){
+        $deleteParent = 1;
         foreach ($categories as $category){
-            if(!$category->getChildren()->isEmpty()) {
-                $this->deleteCategoriesRecursivly($category->getChildren());
+            $deleteCategory = 1;
+            if($category->getPermission()->getUpload()) {
+                if (!$category->getChildren()->isEmpty())
+                    $deleteCategory = $this->deleteCategoriesRecursivly($category->getChildren());
+            }else{
+                $deleteCategory = 0;
             }
-            $this->removeCategory($category);
+
+            if($deleteCategory == 1) {
+                if ($this->removeCategory($category) == 0)
+                    $deleteParent = 0;
+            }
+            else
+                $deleteParent = 0;
         }
+        return $deleteParent;
     }
 
     private function removeCategory($category){
-        if($this->user == $category->getUser()/* && $category->getPermission()->getUpload()*/) {
-            $this->entityManager->remove($category->getPermission());
+        if($this->user == $category->getUser() && $category->getPermission()->getUpload()) {
             foreach ($category->getFiles() as $file) {
                 foreach ($file->getVersions() as $version) {
+                    $fileName = $this->entityManager->getRepository(File::class)->getFileSavedName($file,$version);
+                    unlink(__DIR__.'/../assets/files/'.$fileName);
                     $this->entityManager->remove($version);
                 }
                 $this->entityManager->remove($file);
             }
+            $this->entityManager->remove($category->getPermission());
             $this->entityManager->remove($category);
-
+            return 1;
         }
+        return 0;
     }
 
     public function changePermissionForCategory(User $user,$data){

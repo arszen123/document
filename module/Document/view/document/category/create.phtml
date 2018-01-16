@@ -5,10 +5,14 @@ $title = 'Create category';
 ?>
     <h1><?= $this->escapeHtml($title) ?></h1>
 <?php
-$form->setAttribute('action', '/document/category/create');//$this->url('document/category', ['action' => 'create']));
+$form->setAttribute('action', $this->url('category', ['action' => 'create']));//$this->url('document/category', ['action' => 'create']));
 $form->prepare();
 
-echo $this->form()->openTag($form);
-echo $this->formRow($form->get('name'));
-echo $this->formSubmit($form->get('submit'));
-echo $this->form()->closeTag();
+echo $this->form()->openTag($form) ?>
+<div class="form-group">
+<?= $this->formRow($form->get('name'))?>
+</div>
+<div>
+<?= $this->formSubmit($form->get('submit'))?>
+</div>
+<?= $this->form()->closeTag()?>

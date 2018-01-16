@@ -15,6 +15,11 @@ use Doctrine\ORM\Mapping\Driver\AnnotationDriver;
 use Document\Controller\CategoryController;
 use Document\Controller\DocumentController;
 use Document\Controller\FileController;
+use Zend\Session\Config\SessionConfig;
+use Zend\Session\Storage\SessionArrayStorage;
+use Zend\Session\Validator\HttpUserAgent;
+use Zend\Session\Validator\RemoteAddr;
+
 return [
     'controllers' => [
         'factories' => [
@@ -106,5 +111,18 @@ return [
                 ]
             ]
         ]
-    ]
+    ],
+    /*'session_manager' => [
+        'config' => [
+            'class' => SessionConfig::class,
+            'options' => [
+                'name' => 'document',
+            ],
+        ],
+        'storage' => SessionArrayStorage::class,
+        'validators' => [
+            RemoteAddr::class,
+            HttpUserAgent::class,
+        ],
+    ],*/
 ];

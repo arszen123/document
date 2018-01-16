@@ -9,6 +9,8 @@
 namespace Document\Model;
 
 
+use Zend\Stdlib\ResponseInterface;
+
 class ResponseData
 {
 
@@ -23,7 +25,7 @@ class ResponseData
     }
 
     /**
-     * @param mixed $response
+     * @param ResponseInterface $response
      */
     public function setResponse($response)
     {
@@ -108,6 +110,9 @@ class ResponseData
     }
 
     public function getResponseAsJsonContentType(){
+        if(!($this->response instanceof ResponseInterface)){
+            throw new \Exception(sprintf('Call %s::setResponse($response), $response should be instance of ResponseInterface ',__CLASS__));
+        }
         $this->response->getHeaders()->addHeaderLine('Content-Type', 'application/json');
         $this->response->setContent($this->getAsJsonObject());
         return $this->response;

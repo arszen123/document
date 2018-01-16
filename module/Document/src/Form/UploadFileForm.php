@@ -29,7 +29,8 @@ class UploadFileForm extends Form
             ],
             'attributes' => [
                 'placeholder' => 'File name',
-                'id' => 'fileName'
+                'id' => 'fileName',
+                'class'=>'form-control'
             ]
         ]);
         $this->add([
@@ -41,7 +42,7 @@ class UploadFileForm extends Form
             ],
             'attributes' => [
                 'placeholder' => 'File to upload',
-                'id' => 'fileToUpload'
+                'id' => 'fileToUpload',
             ]
         ]);
         $this->add([
@@ -50,6 +51,7 @@ class UploadFileForm extends Form
             'attributes' => [
                 'value' => 'Upload',
                 'id'    => 'submitbutton',
+                'class' => 'btn btn-default'
             ],
         ]);
 

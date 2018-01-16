@@ -10,7 +10,11 @@ namespace Document;
 
 
 use Doctrine\ORM\EntityManager;
+use Document\Entity\User;
 use Zend\ModuleManager\Feature\ConfigProviderInterface;
+use Zend\Session\Config\SessionConfig;
+use Zend\Session\Container;
+use Zend\Session\SessionManager;
 
 class Module implements ConfigProviderInterface
 {
@@ -23,9 +27,9 @@ class Module implements ConfigProviderInterface
     {
         return [
             'factories' => [
-                'EntityManagerFactory' => function($container) {
-                    $em = $container->get('doctrine.entitymanager.orm_default');
-                    return new $em;
+                'User' => function($container){
+                $em = $container->get('doctrine.entitymanager.orm_default');
+                return $em->find(User::class,1);
                 }]
             ];
     }
@@ -35,13 +39,17 @@ class Module implements ConfigProviderInterface
         return [
             'factories' => [
                 Controller\FileController::class => function($container) {
+                    $em = $container->get('doctrine.entitymanager.orm_default');
+                    $user = $container->get('User');
                     return new Controller\FileController(
-                        $container->get('doctrine.entitymanager.orm_default')
+                        $em,$user
                     );
                 },
                 Controller\CategoryController::class => function($container) {
+                    $em = $container->get('doctrine.entitymanager.orm_default');
+                    $user = $container->get('User');
                     return new Controller\CategoryController(
-                        $container->get('doctrine.entitymanager.orm_default')
+                        $em,$user
                     );
                 }
             ],

@@ -14,7 +14,9 @@ use Doctrine\ORM\EntityManager;
 use Document\Entity\Category;
 use Document\Entity\User;
 use Document\Entity\File;
+use Document\Entity\Version;
 use Document\Form\UploadFileForm;
+use Document\Model\FileDetailes;
 use Document\Model\ResponseData;
 use Document\Model\UploadFile;
 use Zend\Filter\File\RenameUpload;
@@ -28,10 +30,10 @@ class FileController extends AbstractActionController
     private $entityManager;
     private $user;
 
-    public function __construct(EntityManager $entityManager)
+    public function __construct(EntityManager $entityManager,User $user)
     {
         $this->entityManager = $entityManager;
-        $this->user = $this->entityManager->find(User::class,1);
+        $this->user = $user;
     }
 
     public function indexAction()
@@ -61,6 +63,11 @@ class FileController extends AbstractActionController
         $category = $this->entityManager->getRepository(Category::class)->findOneBy(array('user'=>$this->user,'id'=>$data['categoryId']));
         if($category == null){
             $responseData->setFailMessage('Category not found!');
+            return $responseData->getResponseAsJsonContentType();
+        }
+
+        if($category->getParent() == null){
+            $responseData->setFailMessage('Cannot upload files to root category!');
             return $responseData->getResponseAsJsonContentType();
         }
 
@@ -108,7 +115,7 @@ class FileController extends AbstractActionController
         $versionId = $this->params()->fromRoute('versionId',0);
         $response = $this->getResponse();
 
-        $fileData = $this->entityManager->getRepository(File::class)->getFile($fileId,$versionId);
+        $fileData = $this->entityManager->getRepository(File::class)->getFile($fileId,$versionId,$this->user);
         if($fileData instanceof ResponseData) {
             $fileData->setResponse($response);
             return $fileData->getResponseAsJsonContentType();
@@ -117,10 +124,10 @@ class FileController extends AbstractActionController
         $stream = new Stream();
         $stream->setStream(fopen($fileName, 'r'));
         $stream->setStatusCode(200);
-        $stream->setStreamName(basename($fileData['fileName']));
+        $stream->setStreamName(basename($fileData['file']->getFilename()));
         $headers = new \Zend\Http\Headers();
         $headers->addHeaders(array(
-            'Content-Disposition' => 'attachment; filename="' . basename($fileData['fileName']) .'"',
+            'Content-Disposition' => 'attachment; filename="' . basename($fileData['file']->getFilename()) .'"',
             'Content-Type' => 'application/octet-stream',
             'Content-Length' => filesize($fileName),
             'Expires' => '@0', // @0, because zf2 parses date as string to \DateTime() object
@@ -129,5 +136,22 @@ class FileController extends AbstractActionController
         ));
         $stream->setHeaders($headers);
         return $stream;
+    }
+
+    public function detailesAction(){
+        $fileId = $this->params()->fromRoute('id',0);
+        $versionId = $this->params()->fromRoute('versionId',0);
+        $response = $this->getResponse();
+
+        $fileData = $this->entityManager->getRepository(File::class)->getFile($fileId,$versionId,$this->user);
+        if($fileData instanceof ResponseData) {
+            $fileData->setResponse($response);
+            return $fileData->getResponseAsJsonContentType();
+        }
+        $response = new ResponseData($this->getResponse());
+        $data = new FileDetailes($fileData['file'],$fileData['version']);
+        $response->setData($data->getDetailesAsJosnObject());
+        $response->setSuccessMessage('Detailes loaded!');
+        return $response->getResponseAsJsonContentType();
     }
 }

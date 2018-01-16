@@ -44,8 +44,7 @@ class EditPermissionForm extends Form
                 'unchecked_value' => 0,
             ],
             'attributes' => [
-                'id' => 'download',
-                'value' => 'yes'
+                'id' => 'download'
             ]
         ]);
         $this->add([
@@ -54,6 +53,7 @@ class EditPermissionForm extends Form
             'attributes' => [
                 'value' => 'Save',
                 'id'    => 'submitbutton',
+                'class' => 'btn btn-default'
             ],
         ]);
     }

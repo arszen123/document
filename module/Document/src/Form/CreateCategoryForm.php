@@ -26,7 +26,8 @@ class CreateCategoryForm extends Form
             ],
             'attributes' => [
                 'placeholder' => 'Category name',
-                'id' => 'name'
+                'id' => 'name',
+                'class' => 'form-control'
             ]
         ]);
         $this->add([

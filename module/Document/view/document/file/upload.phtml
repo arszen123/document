@@ -8,9 +8,14 @@ $title = 'Upload file';
 
 $form->setAttribute('action', $this->url('file', ['action' => 'upload','id'=>$cid]));
 $form->prepare();
+?>
 
-echo $this->form()->openTag($form);
-echo $this->formRow($form->get('fileName'));
-echo $this->formRow($form->get('file'));
-echo $this->formSubmit($form->get('submit'));
-echo $this->form()->closeTag();
+<?= $this->form()->openTag($form) ?>
+<div class="form-group">
+<?= $this->formRow($form->get('fileName'))?>
+</div>
+<div class="form-group">
+<?= $this->formRow($form->get('file'))?>
+</div>
+<?= $this->formSubmit($form->get('submit'))?>
+<?= $this->form()->closeTag()?>

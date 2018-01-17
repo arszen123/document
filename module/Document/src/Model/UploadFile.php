@@ -71,7 +71,6 @@ class UploadFile implements InputFilterAwareInterface
     }
 
     public function saveFile($file,$fileName){
-
         $fileExtension = explode('.',$file['name']);
         $file['name'] = $fileName.'.'.$fileExtension[sizeof($fileExtension)-1];
 

@@ -112,17 +112,4 @@ return [
             ]
         ]
     ],
-    /*'session_manager' => [
-        'config' => [
-            'class' => SessionConfig::class,
-            'options' => [
-                'name' => 'document',
-            ],
-        ],
-        'storage' => SessionArrayStorage::class,
-        'validators' => [
-            RemoteAddr::class,
-            HttpUserAgent::class,
-        ],
-    ],*/
 ];

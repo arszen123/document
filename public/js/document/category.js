@@ -41,8 +41,8 @@ $(function () {
                 modal.setContent(data);
                 if (!modal.isOpen) {
                     modal.open();
-                    $('form').submit(makePostRequest);
                 }
+                $('form').submit(makePostRequest);
             }
         }
     };
@@ -53,8 +53,8 @@ $(function () {
                 modal.setTitle('Upload File').setContent(data);
                 if (!modal.isOpen) {
                     modal.open();
-                    $('form').submit(uploadFileAjaxPost);
                 }
+                $('form').submit(uploadFileAjaxPost);
             }
             if (jsonCt) {
                 if(isSuccess(data.status))

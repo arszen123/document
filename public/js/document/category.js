@@ -8,7 +8,7 @@ $(function () {
         uploaded:'#uploadedTime',user:'#uploadedUser'};
     var modal = new jBox('Modal');
     var noticeData = {delayOpen: 1, delayClose: 1, attributes: {y: 'bottom'}};
-    var lastDetailesUrl = null;
+    var lastDetailsUrl = null;
     var confirm = new jBox('Confirm', {
         content: 'Do you really want to do this?',
         cancelButton: 'Nope',
@@ -108,7 +108,7 @@ $(function () {
     $('#deleteCategory').on('click', deleteCategory);
     $('#uploadFile').on('click',uploadFileAjaxRequest);
     $(categoriesId).on('select_node.jstree',loadFiles);
-    $(filesId).on('hover_node.jstree',prepareAndLoadFileDetailes);
+    $(filesId).on('hover_node.jstree',prepareAndLoadFileDetails);
     $(filesId).on('select_node.jstree',downloadFile);
 
     function createRootCategory(){
@@ -240,7 +240,7 @@ $(function () {
                             $(settings.jsTreeId).jstree(true).settings.core.data = [];
                             $(settings.jsTreeId).jstree(true).refresh();
                             $(helperId).html('No files in this category!');
-                            removeFileDetailes();
+                            removeFileDetails();
                         }
                     }
                 }
@@ -249,17 +249,17 @@ $(function () {
         });
     }
 
-    function prepareAndLoadFileDetailes(event,node){
+    function prepareAndLoadFileDetails(event,node){
             url = node.node.a_attr.href;
-            url = url.replace('download','detailes');
+            url = url.replace('download','details');
 
-            if(lastDetailesUrl!== url) {
-                lastDetailesUrl = url;
-                loadFileDetailes(url);
+            if(lastDetailsUrl!== url) {
+                lastDetailsUrl = url;
+                loadFileDetails(url);
             }
     }
 
-    function loadFileDetailes(url){
+    function loadFileDetails(url){
         $.ajax({
             url:url,
             method:'GET',
@@ -269,12 +269,12 @@ $(function () {
                     return;
                 }
                 if(isSuccess(data.status)){
-                    setUpFileDetailes(data.data);
+                    setUpFileDetails(data.data);
                 }
             }
         });
     }
-    function setUpFileDetailes(data){
+    function setUpFileDetails(data){
         $(fileInfoId.visibleName).html(data.visibleName);
         $(fileInfoId.filename).html(data.filename);
         $(fileInfoId.version).html(data.version);
@@ -282,7 +282,7 @@ $(function () {
         $(fileInfoId.user).html(data.user);
     }
 
-    function removeFileDetailes() {
+    function removeFileDetails() {
         elements = $(fileInfoDivId+' div');
         for(i=0;i<elements.length;i++)
             $(elements[i]).html('-');

@@ -101,6 +101,10 @@ class FileController extends AbstractActionController
         $data = $form->getData();
         $data['categoryId'] = $categoryId;
         $data['user'] = $this->user;
+        if(!is_writable(__DIR__.'/../assets/files')) {
+            $responseData->setFailMessage('Server error! Contact with us!');
+            return $responseData->getResponseAsJsonContentType();
+        }
         $newFileName = $this->entityManager->getRepository(File::class)->saveFileInDatabase($data);
 
         //Upload
@@ -139,20 +143,26 @@ class FileController extends AbstractActionController
         return $stream;
     }
 
-    public function detailesAction(){
+    public function detailsAction(){
         $fileId = $this->params()->fromRoute('id',0);
         $versionId = $this->params()->fromRoute('versionId',0);
         $response = $this->getResponse();
+        $responseData = new ResponseData($response);
+
+        if(!is_readable(__DIR__.'/../assets/files')) {
+            $responseData->setFailMessage('Server error! Contact with us!');
+            return $responseData->getResponseAsJsonContentType();
+        }
 
         $fileData = $this->entityManager->getRepository(File::class)->getFile($fileId,$versionId,$this->user);
         if($fileData instanceof ResponseData) {
             $fileData->setResponse($response);
             return $fileData->getResponseAsJsonContentType();
         }
-        $response = new ResponseData($this->getResponse());
+
         $data = new FileDetailes($fileData['file'],$fileData['version']);
-        $response->setData($data->getDetailesAsJosnObject());
-        $response->setSuccessMessage('Detailes loaded!');
-        return $response->getResponseAsJsonContentType();
+        $responseData->setData($data->getDetailesAsJosnObject());
+        $responseData->setSuccessMessage('Details loaded!');
+        return $responseData->getResponseAsJsonContentType();
     }
 }

@@ -30,6 +30,10 @@ class PermissionRepository extends EntityRepository
         return ($category->getUser() == $user && $category->getPermission()->getUpload());
     }
 
+    public function hasDownloadPermission($category,$user){
+        return ($category->getUser() == $user && $category->getPermission()->getDownload());
+    }
+
     public function hasEditPermission($category,$user){
         return $category != null && $this->hasPermission($category,$user);
     }

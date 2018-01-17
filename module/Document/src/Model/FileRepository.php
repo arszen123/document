@@ -126,7 +126,7 @@ class FileRepository extends EntityRepository
             $result->setFailMessage('File not found!');
             return $result;
         }
-        if($entityManager->getRepository(Permission::class)->hasPermission($file->getCategory(),$file->getCategory()->getUser())) {
+        if(!$entityManager->getRepository(Permission::class)->hasDownloadPermission($file->getCategory(),$file->getCategory()->getUser())) {
             $result->setFailMessage('No download permission!');
             return $result;
         }

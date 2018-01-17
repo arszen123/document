@@ -138,8 +138,10 @@ class CategoryRepository extends EntityRepository
         if($category->getPermission()->getUpload() && !$category->getChildren()->isEmpty())
             $remove = $this->deleteCategoriesRecursivly($category->getChildren());
         if($remove == 1) {
-            $this->removeCategory($category);
-            $responseData->setSuccessMessage('Deleted successfully!');
+            if($this->removeCategory($category))
+                $responseData->setSuccessMessage('Deleted successfully!');
+            else
+                $remove = 0;
         }
         if($remove == 0){
             $responseData->setFailMessage('Some categories may not been deleted!');
